@@ -28,14 +28,28 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    public function praticien()
+    // Patient appointments
+    public function patientAppointments()
     {
-        return $this->hasOne(Praticien::class);
+        return $this->hasMany(RendezVous::class, 'patient_id');
     }
 
-    public function patient()
+    // Dentist appointments
+    public function dentistAppointments()
     {
-        return $this->hasOne(Patient::class);
+        return $this->hasMany(RendezVous::class, 'praticien_id');
+    }
+
+    // Patient medical records
+    public function patientMedicalRecords()
+    {
+        return $this->hasMany(DossierMedical::class, 'patient_id');
+    }
+
+    // Dentist created medical records
+    public function dentistMedicalRecords()
+    {
+        return $this->hasMany(DossierMedical::class, 'praticien_id');
     }
 
     public function isAdmin()
