@@ -19,11 +19,11 @@ class RendezVous extends Model
 
     public function patient()
     {
-        return $this->belongsTo(Patient::class);
+        return $this->belongsTo(User::class, 'patient_id');
     }
 
     public function praticien()
     {
-        return $this->belongsTo(Praticien::class);
+        return $this->belongsTo(User::class, 'praticien_id');
     }
 }
