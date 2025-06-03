@@ -28,6 +28,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+        public function hasRole($roles)
+        {
+            if (!is_array($roles)) {
+                $roles = [$roles];
+            }
+            return in_array($this->role, $roles);
+        }
     // Patient appointments
     public function patientAppointments()
     {
@@ -65,5 +72,10 @@ class User extends Authenticatable
     public function isPatient()
     {
         return $this->role === 'patient';
+    }
+
+    public function praticien()
+    {
+        return $this->hasOne(Praticien::class);
     }
 }
