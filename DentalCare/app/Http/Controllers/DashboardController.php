@@ -2,9 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\UserRole;
 use App\Models\RendezVous;
-use App\Models\User;
+use App\Models\DossierMedical;
 use Illuminate\Support\Facades\Auth;
 
 class DashboardController extends Controller
@@ -13,20 +12,20 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
         
-        if ($user->role === UserRole::ADMIN->value) {
+        if ($user->role === 'admin') {
             return $this->admin();
-        } elseif ($user->role === UserRole::PRATICIEN->value) {
+        } elseif ($user->role === 'praticien') {
             return $this->dentist();
         } else {
             return $this->patient();
         }
     }
 
-    public function admin()
+    protected function admin()
     {
         $stats = [
-            'patients' => User::where('role', UserRole::PATIENT->value)->count(),
-            'dentists' => User::where('role', UserRole::PRATICIEN->value)->count(),
+            'patients' => User::where('role', 'patient')->count(),
+            'dentists' => User::where('role', 'praticien')->count(),
             'appointments' => RendezVous::count(),
             'upcoming' => RendezVous::where('date_heure', '>=', now())->count(),
         ];
@@ -34,20 +33,28 @@ class DashboardController extends Controller
         return view('dashboard.admin', compact('stats'));
     }
 
-    public function dentist()
+    protected function dentist()
     {
-        $appointments = auth()->user()->dentistAppointments()
-            ->with('patient')
+        $dentistId = Auth::id();
+        
+        $appointments = RendezVous::with('patient')
+            ->where('dentist_id', $dentistId)
+            ->where('date_heure', '>=', now())
             ->orderBy('date_heure')
             ->paginate(10);
 
-        return view('dashboard.dentist', compact('appointments'));
+        $medicalRecords = DossierMedical::with('patient')
+            ->where('dentist_id', $dentistId)
+            ->latest()
+            ->paginate(10);
+
+        return view('dentist.dashboard', compact('appointments', 'medicalRecords'));
     }
 
-    public function patient()
+    protected function patient()
     {
         $appointments = auth()->user()->patientAppointments()
-            ->with('praticien')
+            ->with('dentist')
             ->orderBy('date_heure')
             ->paginate(10);
 

@@ -3,10 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Dentist;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use App\Enums\UserRole;
 
 class AuthController extends Controller
 {
@@ -17,18 +17,19 @@ class AuthController extends Controller
     }
 
     // Handle registration
-    public function register(Request $request)
+   public function register(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => ['required', 'in:' . implode(',', UserRole::values())],
+            'role' => 'required|in:patient,praticien,admin',
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:255',
             'date_of_birth' => 'required|date',
-            'specialty' => 'required_if:role,praticien|string|max:255|nullable',
             'license_number' => 'required_if:role,praticien|string|max:50|nullable',
+            'years_of_experience' => 'nullable|integer|min:0',
+            'bio' => 'nullable|string',
         ]);
 
         $user = User::create([
@@ -41,11 +42,14 @@ class AuthController extends Controller
             'date_of_birth' => $validated['date_of_birth'],
         ]);
 
-        if ($validated['role'] === UserRole::PRATICIEN->value) {
-            $user->praticien()->create([
-                'specialite' => $validated['specialty'],
-                'bio' => '',
+        // If registering as a dentist (praticien)
+        if ($validated['role'] === 'praticien') {
+            Dentist::create([
+                'user_id' => $user->id,
+                'bio' => $validated['bio'] ?? '',
                 'license_number' => $validated['license_number'],
+                'years_of_experience' => $validated['years_of_experience'] ?? 0,
+                // photo can be added later through profile update
             ]);
         }
 
@@ -53,7 +57,6 @@ class AuthController extends Controller
 
         return $this->redirectBasedOnRole($user->role);
     }
-
     // Show login form
     public function showLoginForm()
     {
@@ -93,8 +96,8 @@ class AuthController extends Controller
     protected function redirectBasedOnRole(string $role)
     {
         return match($role) {
-            UserRole::ADMIN->value => redirect()->route('admin.dashboard'),
-            UserRole::PRATICIEN->value => redirect()->route('dentist.dashboard'),
+            'admin' => redirect()->route('admin.dashboard'),
+            'praticien' => redirect()->route('dentist.dashboard'),
             default => redirect()->route('patient.dashboard'),
         };
     }

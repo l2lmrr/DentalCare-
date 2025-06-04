@@ -84,50 +84,42 @@
         </div>
         
         <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <!-- Dentist 1 -->
-            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300 slide-up">
-                <div class="h-64 bg-blue-600 flex items-center justify-center">
-                    <i class="fas fa-user-md text-white text-8xl"></i>
+            @foreach($dentists as $index => $dentist)
+            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300 slide-up" 
+                 @if($index > 0) style="animation-delay: {{ $index * 0.2 }}s" @endif>
+                <div class="h-64 bg-blue-600 flex items-center justify-center overflow-hidden">
+                    @if($dentist->photo)
+                        <img src="{{ asset('storage/' . $dentist->photo) }}" alt="Dr. {{ $dentist->user->name }}" 
+                             class="w-full h-full object-cover">
+                    @else
+                        <i class="fas fa-user-md text-white text-8xl"></i>
+                    @endif
                 </div>
                 <div class="p-6">
-                    <h3 class="text-xl font-bold mb-1">Dr. Sarah Johnson</h3>
-                    <p class="text-blue-600 mb-4">General Dentist</p>
-                    <p class="text-gray-600 mb-4">Specializes in cosmetic dentistry and restorative procedures with over 10 years of experience.</p>
-                    <a href="#" class="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300">
-                        Book Appointment
-                    </a>
+                    <h3 class="text-xl font-bold mb-1">Dr. {{ $dentist->user->name }}</h3>
+                    <p class="text-blue-600 mb-4">{{ $dentist->specialite ?? 'General Dentist' }}</p>
+                    <p class="text-gray-600 mb-4">
+                        {{ $dentist->bio ?? 'Specializes in dental procedures with professional expertise.' }}
+                    </p>
+                    
+                    @auth
+                        @if(auth()->user()->isPatient())
+                            <a href="{{ route('appointment.create', $dentist->id) }}" 
+                               class="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300">
+                                Book Appointment
+                            </a>
+                        @elseif(auth()->user()->isDentist())
+                            <span class="text-gray-500">Please login as patient to book</span>
+                        @endif
+                    @else
+                        <a href="{{ route('login') }}" 
+                           class="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300">
+                            Login to Book
+                        </a>
+                    @endauth
                 </div>
             </div>
-            
-            <!-- Dentist 2 -->
-            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300 slide-up" style="animation-delay: 0.2s;">
-                <div class="h-64 bg-blue-600 flex items-center justify-center">
-                    <i class="fas fa-user-md text-white text-8xl"></i>
-                </div>
-                <div class="p-6">
-                    <h3 class="text-xl font-bold mb-1">Dr. Michael Chen</h3>
-                    <p class="text-blue-600 mb-4">Orthodontist</p>
-                    <p class="text-gray-600 mb-4">Expert in braces, Invisalign, and other orthodontic treatments with 8 years of experience.</p>
-                    <a href="#" class="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300">
-                        Book Appointment
-                    </a>
-                </div>
-            </div>
-            
-            <!-- Dentist 3 -->
-            <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition duration-300 slide-up" style="animation-delay: 0.4s;">
-                <div class="h-64 bg-blue-600 flex items-center justify-center">
-                    <i class="fas fa-user-md text-white text-8xl"></i>
-                </div>
-                <div class="p-6">
-                    <h3 class="text-xl font-bold mb-1">Dr. Emily Rodriguez</h3>
-                    <p class="text-blue-600 mb-4">Pediatric Dentist</p>
-                    <p class="text-gray-600 mb-4">Specializes in children's dental health with a gentle approach and 7 years of experience.</p>
-                    <a href="#" class="inline-flex items-center px-4 py-2 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition duration-300">
-                        Book Appointment
-                    </a>
-                </div>
-            </div>
+            @endforeach
         </div>
     </div>
 </section>

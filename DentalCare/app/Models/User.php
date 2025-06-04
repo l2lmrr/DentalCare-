@@ -26,15 +26,23 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'working_hours' => 'array' // If you want to access it directly from User
     ];
 
-        public function hasRole($roles)
-        {
-            if (!is_array($roles)) {
-                $roles = [$roles];
-            }
-            return in_array($this->role, $roles);
+    public function hasRole($roles)
+    {
+        if (!is_array($roles)) {
+            $roles = [$roles];
         }
+        return in_array($this->role, $roles);
+    }
+
+    // Dentist relationship
+    public function dentist()
+    {
+        return $this->hasOne(Dentist::class);
+    }
+
     // Patient appointments
     public function patientAppointments()
     {
@@ -44,29 +52,13 @@ class User extends Authenticatable
     // Dentist appointments
     public function dentistAppointments()
     {
-        return $this->hasMany(RendezVous::class, 'praticien_id');
+        return $this->hasMany(RendezVous::class, 'dentist_id');
     }
 
-    // Patient medical records
-    public function patientMedicalRecords()
-    {
-        return $this->hasMany(DossierMedical::class, 'patient_id');
-    }
-
-    // Dentist created medical records
-    public function dentistMedicalRecords()
-    {
-        return $this->hasMany(DossierMedical::class, 'praticien_id');
-    }
-
+    // Check roles
     public function isAdmin()
     {
         return $this->role === 'admin';
-    }
-
-    public function isPraticien()
-    {
-        return $this->role === 'praticien';
     }
 
     public function isPatient()
@@ -74,8 +66,16 @@ class User extends Authenticatable
         return $this->role === 'patient';
     }
 
-    public function praticien()
+    public function isDentist()
     {
-        return $this->hasOne(Praticien::class);
+        return $this->role === 'praticien';
+    }
+
+    // Accessor for photo
+    public function getPhotoUrlAttribute()
+    {
+        return $this->dentist && $this->dentist->photo 
+            ? asset('storage/'.$this->dentist->photo) 
+            : asset('images/default-dentist.jpg');
     }
 }

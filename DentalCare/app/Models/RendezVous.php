@@ -9,9 +9,11 @@ class RendezVous extends Model
 {
     use HasFactory;
 
+        protected $table = 'rendez_vous';
+
     protected $fillable = [
         'patient_id',
-        'praticien_id',
+        'dentist_id',
         'date_heure',
         'statut',
         'notes'
@@ -22,8 +24,8 @@ class RendezVous extends Model
         return $this->belongsTo(User::class, 'patient_id');
     }
 
-    public function praticien()
+    public function dentist()
     {
-        return $this->belongsTo(User::class, 'praticien_id');
+        return $this->belongsTo(User::class, 'dentist_id');
     }
 }
