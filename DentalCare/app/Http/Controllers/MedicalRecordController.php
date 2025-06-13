@@ -42,7 +42,7 @@ class MedicalRecordController extends Controller
 
     public function edit(DossierMedical $medicalRecord)
     {
-        return view('medical-records.edit', compact('medicalRecord'));
+        return view('modals.medical-records-edit', compact('medicalRecord'));
     }
 
     public function update(Request $request, DossierMedical $medicalRecord)

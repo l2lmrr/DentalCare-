@@ -3,23 +3,42 @@
 namespace App\Http\Controllers;
 
 use App\Models\RendezVous;
+use App\Models\PlageHoraire;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AppointmentController extends Controller
 {
+    use AuthorizesRequests;// Constants
+    const SLOT_DURATION = 30; // minutes
+
     public function index()
     {
-        $appointments = RendezVous::with(['patient', 'dentist'])
+        $appointments = RendezVous::with(['dentist.dentist', 'patient'])
             ->where('patient_id', auth()->id())
             ->orderBy('date_heure')
             ->paginate(10);
 
-        return view('appointments.index', compact('appointments'));
+        return view('patient.dashboard', compact('appointments'));
     }
 
     public function create(User $dentist)
     {
-        return view('appointments.create', compact('dentist'));
+        if (!$dentist->isDentist()) {
+            abort(404, 'Dentist not found');
+        }
+
+        $availableSlots = $this->getAvailableTimeSlots($dentist);
+        $workingHours = $dentist->workingHours()->orderBy('jour')->get();
+
+        return view('appointments.create', [
+            'dentist' => $dentist,
+            'availableSlots' => $availableSlots,
+            'workingHours' => $workingHours
+        ]);
     }
 
     public function store(Request $request)
@@ -27,55 +46,150 @@ class AppointmentController extends Controller
         $validated = $request->validate([
             'dentist_id' => 'required|exists:users,id',
             'date_heure' => 'required|date|after:now',
+            'notes' => 'nullable|string|max:1000',
         ]);
 
-        RendezVous::create([
+        $dentist = User::findOrFail($validated['dentist_id']);
+        $selectedDateTime = Carbon::parse($validated['date_heure']);
+        $dayOfWeek = strtolower($selectedDateTime->isoFormat('dddd'));
+        $time = $selectedDateTime->format('H:i:s');
+
+        // Check if dentist is available at this time
+        $isWithinWorkingHours = $dentist->workingHours()
+            ->where('jour', $dayOfWeek)
+            ->where('heure_debut', '<=', $time)
+            ->where('heure_fin', '>=', $time)
+            ->exists();
+
+        if (!$isWithinWorkingHours) {
+            return back()->withErrors(['date_heure' => 'Selected time is outside of dentist\'s working hours'])->withInput();
+        }
+
+        // Check for existing appointments
+        if (!RendezVous::isTimeSlotAvailable($dentist->id, $validated['date_heure'])) {
+            return back()->withErrors(['date_heure' => 'This time slot is already booked'])->withInput();
+        }
+
+        // Create the appointment
+        $appointment = RendezVous::create([
             'patient_id' => auth()->id(),
             'dentist_id' => $validated['dentist_id'],
             'date_heure' => $validated['date_heure'],
             'statut' => 'confirmé',
+            'notes' => $validated['notes'] ?? null,
         ]);
 
-        return redirect()->route('dashboard')->with('success', 'Appointment created successfully');
-    }
-
-    public function show(RendezVous $appointment)
-    {
-        return view('appointments.show', compact('appointment'));
-    }
-
-    public function edit(RendezVous $appointment)
-    {
-        return view('modals.edit-appointment', compact('appointment'));
+        return redirect()->route('dashboard')->with('success', 'Appointment booked successfully!');
     }
 
     public function update(Request $request, RendezVous $appointment)
     {
+        $this->authorize('update', $appointment);
+
         $validated = $request->validate([
-            'date_heure' => 'required|date',
+            'date_heure' => 'required|date|after:now',
             'statut' => 'required|in:confirmé,annulé,reporté',
-            'notes' => 'nullable|string',
+            'notes' => 'nullable|string|max:1000',
         ]);
+
+        // Check if new time is available (excluding current appointment)
+        if ($appointment->date_heure->format('Y-m-d H:i:s') !== $validated['date_heure']) {
+            if (!RendezVous::isTimeSlotAvailable($appointment->dentist_id, $validated['date_heure'], $appointment->id)) {
+                return back()->withErrors(['date_heure' => 'This time slot is already booked'])->withInput();
+            }
+        }
 
         $appointment->update($validated);
 
         return redirect()->route('dashboard')->with('success', 'Appointment updated successfully');
     }
 
+    protected function getAvailableTimeSlots(User $dentist)
+    {
+        $slots = [];
+        $daysToShow = 14; // Show availability for next 14 days
+
+        for ($i = 0; $i < $daysToShow; $i++) {
+            $date = now()->addDays($i);
+            $dayOfWeek = strtolower($date->format('l'));
+
+            $workingHours = $dentist->workingHours()
+                ->where('jour', $dayOfWeek)
+                ->get();
+
+            foreach ($workingHours as $schedule) {
+                $startTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->heure_debut);
+                $endTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->heure_fin);
+
+                // Generate slots
+                while ($startTime->copy()->addMinutes(self::SLOT_DURATION)->lte($endTime)) {
+                    $slotDateTime = $startTime->format('Y-m-d H:i:s');
+                    
+                    // Check if slot is available
+                    if (RendezVous::isTimeSlotAvailable($dentist->id, $slotDateTime)) {
+                        $slots[] = $slotDateTime;
+                    }
+                    
+                    $startTime->addMinutes(self::SLOT_DURATION);
+                }
+            }
+        }
+
+        return $slots;
+    }    public function calendar(Request $request)
+    {
+        // Find the dentist user and load their relationships
+        $dentist = User::with(['dentist', 'workingHours'])
+            ->where('role', 'dentist')
+            ->findOrFail($request->query('id'));
+
+        $workingHours = $dentist->workingHours()
+            ->orderBy('jour')
+            ->get();
+
+        return view('appointments.calendar', [
+            'dentist' => $dentist,
+            'workingHours' => $workingHours
+        ]);
+    }
+
+    public function show(RendezVous $appointment)
+    {
+        $this->authorize('view', $appointment);
+        return view('appointments.show', compact('appointment'));
+    }
+
+    public function edit(RendezVous $appointment)
+    {
+        $this->authorize('update', $appointment);
+        
+        $dentist = $appointment->dentist;
+        $availableSlots = $this->getAvailableTimeSlots($dentist);
+
+        return view('appointments.edit', [
+            'appointment' => $appointment,
+            'dentist' => $dentist,
+            'availableSlots' => $availableSlots
+        ]);
+    }
+
     public function destroy(RendezVous $appointment)
     {
+        $this->authorize('delete', $appointment);
         $appointment->delete();
         return redirect()->route('dashboard')->with('success', 'Appointment deleted');
     }
 
     public function cancel(RendezVous $appointment)
     {
+        $this->authorize('update', $appointment);
         $appointment->update(['statut' => 'annulé']);
         return redirect()->back()->with('success', 'Appointment cancelled');
     }
 
     public function confirm(RendezVous $appointment)
     {
+        $this->authorize('update', $appointment);
         $appointment->update(['statut' => 'confirmé']);
         return redirect()->back()->with('success', 'Appointment confirmed');
     }

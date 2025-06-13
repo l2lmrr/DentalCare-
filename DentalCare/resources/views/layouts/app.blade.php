@@ -3,9 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>DentalCare - @yield('title')</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    @stack('styles')    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.8/main.min.css' rel='stylesheet' />
+    <link href='https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.8/main.min.css' rel='stylesheet' />
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/core@6.1.8/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/daygrid@6.1.8/main.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/@fullcalendar/interaction@6.1.8/main.min.js'></script>
     <style>
         /* Custom animations */
         .fade-in {
@@ -36,13 +42,13 @@
     <!-- Main Content -->
     <main class="pt-20">
         @yield('content')
-    </main>
-
-    @include('partials.footer')
+    </main>    @include('partials.footer')
 
     <!-- JavaScript -->
+    @stack('scripts')
     <script>
-        // Mobile menu toggle
+        document.addEventListener('DOMContentLoaded', function() {
+            // Mobile menu toggle
         document.getElementById('mobile-menu-button').addEventListener('click', function() {
             const menu = document.getElementById('mobile-menu');
             menu.classList.toggle('hidden');
@@ -89,7 +95,5 @@
         window.addEventListener('load', animateOnScroll);
         window.addEventListener('scroll', animateOnScroll);
     </script>
-    
-    @yield('scripts')
 </body>
 </html>

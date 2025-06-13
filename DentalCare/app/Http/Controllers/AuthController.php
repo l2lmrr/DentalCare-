@@ -22,12 +22,18 @@ class AuthController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|in:patient,praticien,admin',
+            'password' => 'required|string|min:8|confirmed',            'role' => 'required|in:patient,dentist,admin',
             'phone' => 'required|string|max:20',
             'address' => 'required|string|max:255',
-            'date_of_birth' => 'required|date',
-            'license_number' => 'required_if:role,praticien|string|max:50|nullable',
+            'date_of_birth' => ['required', 'date', function ($attribute, $value, $fail) use ($request) {
+                if ($request->input('role') === 'dentist') {
+                    $age = \Carbon\Carbon::parse($value)->age;
+                    if ($age < 23) {
+                        $fail('Dentists must be at least 23 years old.');
+                    }
+                }
+            }],
+            'license_number' => 'required_if:role,dentist|string|max:50|nullable',
             'years_of_experience' => 'nullable|integer|min:0',
             'bio' => 'nullable|string',
         ]);
@@ -40,10 +46,8 @@ class AuthController extends Controller
             'phone' => $validated['phone'],
             'address' => $validated['address'],
             'date_of_birth' => $validated['date_of_birth'],
-        ]);
-
-        // If registering as a dentist (praticien)
-        if ($validated['role'] === 'praticien') {
+        ]);        // If registering as a dentist
+        if ($validated['role'] === 'dentist') {
             Dentist::create([
                 'user_id' => $user->id,
                 'bio' => $validated['bio'] ?? '',
@@ -95,10 +99,15 @@ class AuthController extends Controller
     // Role-based redirection
     protected function redirectBasedOnRole(string $role)
     {
-        return match($role) {
-            'admin' => redirect()->route('admin.dashboard'),
-            'praticien' => redirect()->route('dentist.dashboard'),
-            default => redirect()->route('patient.dashboard'),
-        };
+        switch ($role) {
+            case 'admin':
+                return redirect()->route('admin.dashboard');
+            case 'dentist':
+                return redirect()->route('dentist.dashboard');
+            case 'patient':
+                return redirect()->route('patient.dashboard');
+            default:
+                return redirect('/');
+        }
     }
 }

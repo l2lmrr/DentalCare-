@@ -67,9 +67,8 @@
                         <label for="role" class="block text-sm font-medium text-gray-700">I am a</label>
                         <select id="role" name="role" required
                             class="mt-1 block w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-3 px-4 border">
-                            <option value="">Select your role</option>
-                            <option value="patient" {{ old('role') == 'patient' ? 'selected' : '' }}>Patient</option>
-                            <option value="praticien" {{ old('role') == 'praticien' ? 'selected' : '' }}>Dentist</option>
+                            <option value="">Select your role</option>                            <option value="patient" {{ old('role') == 'patient' ? 'selected' : '' }}>Patient</option>
+                            <option value="dentist" {{ old('role') == 'dentist' ? 'selected' : '' }}>Dentist</option>
                         </select>
                         @error('role')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -163,7 +162,7 @@
     // Show/hide dentist fields based on role selection
     document.getElementById('role').addEventListener('change', function() {
         const dentistFields = document.getElementById('dentist-fields');
-        if (this.value === 'praticien') {
+        if (this.value === 'dentist') {
             dentistFields.classList.remove('hidden');
             // Make dentist fields required
             document.getElementById('license_number').required = true;
@@ -177,7 +176,7 @@
     // Trigger change event on page load if role is already selected
     document.addEventListener('DOMContentLoaded', function() {
         const roleSelect = document.getElementById('role');
-        if (roleSelect.value === 'praticien') {
+        if (roleSelect.value === 'dentist') {
             roleSelect.dispatchEvent(new Event('change'));
         }
     });

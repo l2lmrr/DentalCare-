@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('rendez_vous', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('dentist_id')->constrained('dentists')->onDelete('cascade');
+            $table->foreignId('dentist_id')->constrained('users')->onDelete('cascade');
             $table->dateTime('date_heure');
             $table->enum('statut', ['confirmé', 'annulé', 'reporté'])->default('confirmé');
             $table->text('notes')->nullable();

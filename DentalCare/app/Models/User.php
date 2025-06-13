@@ -26,7 +26,6 @@ class User extends Authenticatable
 
     protected $casts = [
         'email_verified_at' => 'datetime',
-        'working_hours' => 'array' // If you want to access it directly from User
     ];
 
     public function hasRole($roles)
@@ -41,6 +40,12 @@ class User extends Authenticatable
     public function dentist()
     {
         return $this->hasOne(Dentist::class);
+    }
+
+    // Working hours for dentists
+    public function workingHours()
+    {
+        return $this->hasMany(PlageHoraire::class, 'dentist_id');
     }
 
     // Patient appointments
@@ -71,11 +76,61 @@ class User extends Authenticatable
         return $this->role === 'praticien';
     }
 
+    public function getDentistData()
+    {
+        return $this->dentist;
+    }
+
     // Accessor for photo
     public function getPhotoUrlAttribute()
     {
         return $this->dentist && $this->dentist->photo 
             ? asset('storage/'.$this->dentist->photo) 
-            : asset('images/default-dentist.jpg');
+            : asset('images/default-profile.jpg');
+    }
+
+    // Get working hours as structured array (compatibility)
+    public function getWorkingHoursAttribute()
+    {
+        if (!$this->isDentist()) {
+            return null;
+        }
+
+        return $this->workingHours()->get()->mapWithKeys(function($item) {
+            return [
+                $item->day_name => [
+                    'start' => $item->heure_debut->format('H:i'),
+                    'end' => $item->heure_fin->format('H:i')
+                ]
+            ];
+        });
+    }
+
+    // Check if user is available at a specific time
+    public function isAvailableAt($dateTime)
+    {
+        if (!$this->isDentist()) {
+            return false;
+        }
+
+        $carbonDate = \Carbon\Carbon::parse($dateTime);
+        $dayOfWeek = strtolower($carbonDate->isoFormat('dddd'));
+        $time = $carbonDate->format('H:i:s');
+
+        // Check if within any working hour slot for that day
+        return $this->workingHours()
+            ->where('jour', $dayOfWeek)
+            ->where('heure_debut', '<=', $time)
+            ->where('heure_fin', '>=', $time)
+            ->exists();
+    }
+
+    // Get all appointments for either dentist or patient
+    public function appointments()
+    {
+        if ($this->isDentist()) {
+            return $this->hasMany(RendezVous::class, 'dentist_id');
+        }
+        return $this->hasMany(RendezVous::class, 'patient_id');
     }
 }

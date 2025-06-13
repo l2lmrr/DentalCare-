@@ -15,12 +15,7 @@ class Dentist extends Model
         'bio',
         'license_number',
         'photo',
-        'years_of_experience',
-        'working_hours'
-    ];
-
-    protected $casts = [
-        'working_hours' => 'array'
+        'years_of_experience'
     ];
 
     public function user()
@@ -30,7 +25,12 @@ class Dentist extends Model
 
     public function appointments()
     {
-        return $this->hasMany(RendezVous::class);
+        return $this->hasMany(RendezVous::class, 'dentist_id', 'user_id');
+    }
+
+    public function workingHours()
+    {
+        return $this->hasMany(PlageHoraire::class, 'dentist_id', 'user_id');
     }
 
     public function getPhotoUrlAttribute()
@@ -38,5 +38,17 @@ class Dentist extends Model
         return $this->photo 
             ? asset('storage/'.$this->photo) 
             : asset('images/default-dentist.jpg');
+    }
+
+    public function getWorkingHoursAttribute()
+    {
+        return $this->workingHours()->get()->mapWithKeys(function($item) {
+            return [
+                strtolower($item->jour) => [
+                    'start' => $item->heure_debut,
+                    'end' => $item->heure_fin
+                ]
+            ];
+        });
     }
 }
