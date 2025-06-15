@@ -28,6 +28,22 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+    /**
+     * Get the appointments where this user is the patient
+     */
+    public function appointments()
+    {
+        return $this->hasMany(RendezVous::class, 'patient_id');
+    }
+
+    /**
+     * Get the appointments where this user is the dentist
+     */
+    public function dentistAppointments()
+    {
+        return $this->hasMany(RendezVous::class, 'dentist_id');
+    }
+
     public function hasRole($roles)
     {
         if (!is_array($roles)) {
@@ -36,28 +52,14 @@ class User extends Authenticatable
         return in_array($this->role, $roles);
     }
 
-    // Dentist relationship
     public function dentist()
     {
         return $this->hasOne(Dentist::class);
     }
 
-    // Working hours for dentists
     public function workingHours()
     {
         return $this->hasMany(PlageHoraire::class, 'dentist_id');
-    }
-
-    // Patient appointments
-    public function patientAppointments()
-    {
-        return $this->hasMany(RendezVous::class, 'patient_id');
-    }
-
-    // Dentist appointments
-    public function dentistAppointments()
-    {
-        return $this->hasMany(RendezVous::class, 'dentist_id');
     }
 
     // Check roles
@@ -125,12 +127,4 @@ class User extends Authenticatable
             ->exists();
     }
 
-    // Get all appointments for either dentist or patient
-    public function appointments()
-    {
-        if ($this->isDentist()) {
-            return $this->hasMany(RendezVous::class, 'dentist_id');
-        }
-        return $this->hasMany(RendezVous::class, 'patient_id');
-    }
 }

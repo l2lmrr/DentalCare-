@@ -19,7 +19,9 @@ class RendezVous extends Model
         'notes'
     ];
 
-    protected $dates = ['date_heure'];
+    protected $casts = [
+        'date_heure' => 'datetime'
+    ];
 
     // Relationships
     public function patient()
@@ -35,7 +37,11 @@ class RendezVous extends Model
     public function dentistInfo()
     {
         return $this->belongsTo(Dentist::class, 'dentist_id', 'user_id');
-        return $this->belongsTo(User::class, 'dentist_id');
+    }
+
+    public function dossierMedical()
+    {
+        return $this->hasOne(DossierMedical::class, 'rendez_vous_id');
     }
 
     // Helper methods
@@ -47,6 +53,11 @@ class RendezVous extends Model
     public function isCancelled()
     {
         return $this->statut === 'annulé';
+    }
+
+    public function isPast()
+    {
+        return $this->date_heure->isPast();
     }
 
     public function isRescheduled()

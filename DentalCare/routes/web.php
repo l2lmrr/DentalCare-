@@ -11,8 +11,6 @@ use App\Http\Controllers\MedicalRecordController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ReportController;
-use App\Http\Controllers\Admin\PlageHoraireController;
-use App\Http\Controllers\Api\AvailabilityController;
 
 /*
 |--------------------------------------------------------------------------
@@ -24,6 +22,9 @@ use App\Http\Controllers\Api\AvailabilityController;
 | contains the "web" middleware group. Now create something great!
 |
 */
+
+// Auth Routes
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
 // Homepage and Public Routes
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -65,6 +66,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/calendar', [AppointmentController::class, 'calendar'])->name('calendar');
         Route::get('/my', [AppointmentController::class, 'index'])->name('my');
         Route::post('/store', [AppointmentController::class, 'store'])->name('store');
+        Route::post('/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('cancel');
     });
 
     // Patient Routes
@@ -108,25 +110,25 @@ Route::middleware('auth')->group(function () {
         Route::delete('/{plageHoraire}', [PlageHoraireController::class, 'destroy'])->name('working-hours.destroy');
     });
 
-    // Admin-only Routes
-    Route::middleware('role:admin')->prefix('admin')->group(function () {
-        // User Management
-        Route::get('/users', [UserController::class, 'index'])->name('admin.users.index');
-        Route::get('/users/create', [UserController::class, 'create'])->name('admin.users.create');
-        Route::post('/users', [UserController::class, 'store'])->name('admin.users.store');
-        Route::get('/users/{user}', [UserController::class, 'show'])->name('admin.users.show');
-        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('admin.users.edit');
-        Route::patch('/users/{user}', [UserController::class, 'update'])->name('admin.users.update');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('admin.users.destroy');
+    // Admin Routes
+    Route::prefix('admin')->name('admin.')->middleware(['auth', 'role:admin'])->group(function () {
+        // Dashboard
+        Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])->name('dashboard');
         
-        // System Settings
-        Route::get('/settings', [SettingController::class, 'edit'])->name('admin.settings.edit');
-        Route::patch('/settings', [SettingController::class, 'update'])->name('admin.settings.update');
+        // Dentist Management
+        Route::get('/dentists', [App\Http\Controllers\Admin\AdminController::class, 'manageDentists'])->name('dentists');
+        Route::post('/dentists', [App\Http\Controllers\Admin\AdminController::class, 'storeDentist'])->name('dentists.store');
+        Route::put('/dentists/{dentist}', [App\Http\Controllers\Admin\AdminController::class, 'updateDentist'])->name('dentists.update');
+        Route::post('/dentists/{dentist}/toggle', [App\Http\Controllers\Admin\AdminController::class, 'toggleDentistStatus'])->name('dentists.toggle');
         
-        // Reports
-        Route::get('/reports', [ReportController::class, 'index'])->name('admin.reports.index');
-        Route::get('/reports/appointments', [ReportController::class, 'appointments'])->name('admin.reports.appointments');
-        Route::get('/reports/patients', [ReportController::class, 'patients'])->name('admin.reports.patients');
+        // Working Hours Management
+        Route::get('/schedule', [App\Http\Controllers\Admin\AdminController::class, 'manageSchedule'])->name('schedule');
+        Route::post('/schedule', [App\Http\Controllers\Admin\AdminController::class, 'storeSchedule'])->name('schedule.store');
+        Route::delete('/schedule/{schedule}', [App\Http\Controllers\Admin\AdminController::class, 'deleteSchedule'])->name('schedule.delete');
+        
+        // Appointments Overview
+        Route::get('/appointments', [App\Http\Controllers\Admin\AdminController::class, 'appointments'])->name('appointments');
+        Route::put('/appointments/{appointment}/cancel', [App\Http\Controllers\Admin\AdminController::class, 'cancelAppointment'])->name('appointments.cancel');
     });
 
     // Appointment routes
@@ -140,6 +142,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/dentist/patients', [DentistController::class, 'patients'])->name('dentist.patients');
         Route::get('/dentist/calendar', [DentistController::class, 'calendar'])->name('dentist.calendar');
     });
+});
+
+// Calendar Routes
+Route::middleware(['auth'])->group(function () {
+    Route::get('/calendar/{dentist}', [AppointmentController::class, 'calendar'])
+        ->name('calendar.show')
+        ->where('dentist', '[0-9]+');
 });
 
 // Fallback Route (404 Page)

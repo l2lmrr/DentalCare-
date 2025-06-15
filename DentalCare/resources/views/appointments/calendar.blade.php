@@ -227,9 +227,9 @@
 <script src='https://cdn.jsdelivr.net/combine/npm/@fullcalendar/core@6.1.8/index.global.min.js,npm/@fullcalendar/daygrid@6.1.8/index.global.min.js,npm/@fullcalendar/timegrid@6.1.8/index.global.min.js,npm/@fullcalendar/interaction@6.1.8/index.global.min.js'></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    const workingHours = @json($workingHours);
     const dentistId = {{ $dentist->id }};
-    
+    console.log('Dentist ID:', dentistId);
+
     const calendar = new FullCalendar.Calendar(document.getElementById('calendar'), {
         initialView: 'dayGridMonth',
         headerToolbar: {
@@ -240,7 +240,10 @@ document.addEventListener('DOMContentLoaded', function() {
         selectable: true,
         select: function(info) {
             const selectedDate = info.start;
-            if (selectedDate < new Date()) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (selectedDate < today) {
                 alert('Cannot select past dates');
                 return;
             }
@@ -251,80 +254,105 @@ document.addEventListener('DOMContentLoaded', function() {
         },
     });
     
-    calendar.render();    function fetchTimeSlots(date) {
+    calendar.render();
+
+    function fetchTimeSlots(date) {
         const formattedDate = date.toISOString().split('T')[0];
         const url = `/api/dentists/${dentistId}/availability?date=${formattedDate}`;
-        // Show loading state
-        document.getElementById('timeSlotsContainer').classList.remove('hidden');
-        document.getElementById('timeSlots').innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div></div>';
-        document.getElementById('selectedDate').textContent = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        console.log('Fetching time slots for dentist:', dentistId, 'date:', formattedDate);
         
-        fetch(url)
-            .then(response => response.json())
-            .then(slots => {
-                displayTimeSlots(slots, formattedDate);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                document.getElementById('timeSlots').innerHTML = '<div class="text-red-600 text-center">Error loading time slots</div>';
-            });
+        // Show loading state
+        const timeSlotsContainer = document.getElementById('timeSlotsContainer');
+        const timeSlotsDiv = document.getElementById('timeSlots');
+        const selectedDateDiv = document.getElementById('selectedDate');
+        
+        timeSlotsContainer.classList.remove('hidden');
+        timeSlotsDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div></div>';
+        selectedDateDiv.textContent = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        // Get CSRF token from meta tag
+        const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch(url, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': token
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                return response.text().then(text => {
+                    console.error('Error response:', text);
+                    throw new Error('Failed to fetch time slots');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('Received data:', data);
+            displayTimeSlots(data, formattedDate);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            timeSlotsDiv.innerHTML = '<div class="text-red-600 text-center py-4">Error loading time slots</div>';
+        });
     }
 
-    function displayTimeSlots(slots, date) {
+    function displayTimeSlots(data, selectedDate) {
         const container = document.getElementById('timeSlots');
-        const form = document.getElementById('appointmentForm');
+        const slots = data.slots || [];
         
-        if (!slots || slots.length === 0) {
-            container.innerHTML = '<div class="text-gray-500 text-center py-4">No available time slots for this date</div>';
-            form.classList.add('hidden');
+        if (slots.length === 0) {
+            container.innerHTML = '<div class="text-center text-gray-600">No available time slots for this date</div>';
             return;
         }
-        
-        container.innerHTML = slots.map(time => `
-            <button type="button" 
-                    class="time-slot group relative rounded-lg px-4 py-3 bg-white border border-gray-200 hover:border-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                    data-datetime="${date}T${time}"
-                    onclick="selectTimeSlot(this)">
-                <span class="flex items-center justify-between">
-                    <span class="min-w-0 flex-1">
-                        <span class="text-sm font-medium text-gray-900">${formatTime(time)}</span>
-                    </span>
-                </span>
-            </button>
-        `).join('');
-    }
 
-    window.selectTimeSlot = function(element) {
-        // Remove selected class from all slots
-        document.querySelectorAll('.time-slot').forEach(slot => {
-            slot.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500');
+        const morningSlots = slots.filter(time => {
+            const hour = parseInt(time.split(':')[0]);
+            return hour < 12;
         });
-        
-        // Add selected class to clicked slot
-        element.classList.add('border-blue-500', 'ring-2', 'ring-blue-500');
-        
-        // Update form
-        const datetime = element.getAttribute('data-datetime');
-        document.getElementById('selectedDateTime').value = datetime;
-        document.getElementById('selectedTimeDisplay').textContent = new Date(datetime).toLocaleString('en-US', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: 'numeric',
-            minute: 'numeric',
-        });
-        
-        // Show form
-        document.getElementById('appointmentForm').classList.remove('hidden');
-    }
 
-    function formatTime(time) {
-        return new Date(`2000-01-01T${time}`).toLocaleTimeString('en-US', {
-            hour: 'numeric',
-            minute: '2-digit',
-            hour12: true
+        const afternoonSlots = slots.filter(time => {
+            const hour = parseInt(time.split(':')[0]);
+            return hour >= 12;
         });
+
+        let html = '<div class="space-y-4">';
+        
+        // Morning slots
+        if (morningSlots.length > 0) {
+            html += '<div class="bg-white p-4 rounded-lg shadow-sm">';
+            html += '<h3 class="text-lg font-semibold mb-3">Morning</h3>';
+            html += '<div class="grid grid-cols-2 gap-2">';
+            morningSlots.forEach(time => {
+                html += `<button type="button" onclick="selectTimeSlot(this)" data-time="${time}" class="time-slot morning py-2 px-4 text-sm rounded-md hover:bg-yellow-50">${formatTime(time)}</button>`;
+            });
+            html += '</div></div>';
+        }
+
+        // Afternoon slots
+        if (afternoonSlots.length > 0) {
+            html += '<div class="bg-white p-4 rounded-lg shadow-sm">';
+            html += '<h3 class="text-lg font-semibold mb-3">Afternoon</h3>';
+            html += '<div class="grid grid-cols-2 gap-2">';
+            afternoonSlots.forEach(time => {
+                html += `<button type="button" onclick="selectTimeSlot(this)" data-time="${time}" class="time-slot afternoon py-2 px-4 text-sm rounded-md hover:bg-blue-50">${formatTime(time)}</button>`;
+            });
+            html += '</div></div>';
+        }
+
+        html += '</div>';
+        container.innerHTML = html;
+    }    function formatTime(time) {
+        const [hours, minutes] = time.split(':');
+        const hour = parseInt(hours);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        const hour12 = hour % 12 || 12;
+        return hour12 + ':' + minutes + ' ' + ampm;
     }
 });
 </script>

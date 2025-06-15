@@ -9,15 +9,18 @@ class DossierMedical extends Model
 {
     use HasFactory;
 
-        protected $table = 'dossiers_medicaux';
+    protected $table = 'dossiers_medicaux';
 
     protected $fillable = [
         'patient_id',
         'dentist_id',
         'diagnostic',
         'traitement',
-        'prescription'
+        'prescription',
+        'rendez_vous_id'
     ];
+
+    protected $with = ['patient', 'dentist'];
 
     public function patient()
     {
@@ -27,5 +30,10 @@ class DossierMedical extends Model
     public function dentist()
     {
         return $this->belongsTo(User::class, 'dentist_id');
+    }
+
+    public function rendez_vous()
+    {
+        return $this->belongsTo(RendezVous::class, 'rendez_vous_id');
     }
 }

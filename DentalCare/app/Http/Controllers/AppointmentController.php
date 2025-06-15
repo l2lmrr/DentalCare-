@@ -82,26 +82,45 @@ class AppointmentController extends Controller
         return redirect()->route('dashboard')->with('success', 'Appointment booked successfully!');
     }
 
+    public function edit(RendezVous $appointment)
+    {
+        $this->authorize('update', $appointment);
+        
+        // Check if appointment is in the past
+        if ($appointment->date_heure->isPast()) {
+            return response()->json([
+                'error' => 'Cannot edit past appointments'
+            ], 403);
+        }
+
+        // Get dentist's working hours
+        $workingHours = PlageHoraire::where('dentist_id', $appointment->dentist_id)
+            ->orderBy('jour')
+            ->get();
+
+        return view('appointments.edit', [
+            'appointment' => $appointment,
+            'workingHours' => $workingHours
+        ]);
+    }
+
     public function update(Request $request, RendezVous $appointment)
     {
         $this->authorize('update', $appointment);
 
+        // Check if appointment is in the past
+        if ($appointment->date_heure->isPast()) {
+            return back()->with('error', 'Cannot edit past appointments');
+        }
+
         $validated = $request->validate([
             'date_heure' => 'required|date|after:now',
-            'statut' => 'required|in:confirmé,annulé,reporté',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        // Check if new time is available (excluding current appointment)
-        if ($appointment->date_heure->format('Y-m-d H:i:s') !== $validated['date_heure']) {
-            if (!RendezVous::isTimeSlotAvailable($appointment->dentist_id, $validated['date_heure'], $appointment->id)) {
-                return back()->withErrors(['date_heure' => 'This time slot is already booked'])->withInput();
-            }
-        }
-
         $appointment->update($validated);
 
-        return redirect()->route('dashboard')->with('success', 'Appointment updated successfully');
+        return redirect()->back()->with('success', 'Appointment rescheduled successfully');
     }
 
     protected function getAvailableTimeSlots(User $dentist)
@@ -159,20 +178,6 @@ class AppointmentController extends Controller
         return view('appointments.show', compact('appointment'));
     }
 
-    public function edit(RendezVous $appointment)
-    {
-        $this->authorize('update', $appointment);
-        
-        $dentist = $appointment->dentist;
-        $availableSlots = $this->getAvailableTimeSlots($dentist);
-
-        return view('appointments.edit', [
-            'appointment' => $appointment,
-            'dentist' => $dentist,
-            'availableSlots' => $availableSlots
-        ]);
-    }
-
     public function destroy(RendezVous $appointment)
     {
         $this->authorize('delete', $appointment);
@@ -183,8 +188,15 @@ class AppointmentController extends Controller
     public function cancel(RendezVous $appointment)
     {
         $this->authorize('update', $appointment);
+
+        // Check if appointment is in the past
+        if ($appointment->date_heure->isPast()) {
+            return back()->with('error', 'Cannot cancel past appointments');
+        }
+
         $appointment->update(['statut' => 'annulé']);
-        return redirect()->back()->with('success', 'Appointment cancelled');
+
+        return redirect()->back()->with('success', 'Appointment cancelled successfully');
     }
 
     public function confirm(RendezVous $appointment)
@@ -192,5 +204,17 @@ class AppointmentController extends Controller
         $this->authorize('update', $appointment);
         $appointment->update(['statut' => 'confirmé']);
         return redirect()->back()->with('success', 'Appointment confirmed');
+    }
+
+    public function showRecord(RendezVous $appointment)
+    {
+        $this->authorize('view', $appointment);
+
+        $medicalRecord = $appointment->dossierMedical;
+
+        return view('appointments.record', [
+            'appointment' => $appointment,
+            'medicalRecord' => $medicalRecord
+        ]);
     }
 }

@@ -4,15 +4,36 @@
 
 @section('content')
 <div class="py-6 px-4 sm:px-6 lg:px-8">
+    <!-- Header with Profile and Logout -->
+    <div class="flex justify-between items-center mb-6 bg-white p-4 rounded-lg shadow">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-900">My Dashboard</h1>
+            <p class="text-sm text-gray-600">Welcome, {{ auth()->user()->name }}</p>
+        </div>
+        <div class="flex items-center space-x-4">
+            <form method="POST" action="{{ route('logout') }}">
+                @csrf
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent rounded-md text-sm font-medium text-red-600 hover:text-red-800 focus:outline-none transition-colors duration-200">
+                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                </button>
+            </form>
+            <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-semibold">
+                {{ substr(auth()->user()->name, 0, 1) }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Appointments Section Header -->
     <div class="sm:flex sm:items-center mb-8">
         <div class="sm:flex-auto">
-            <h1 class="text-2xl font-bold text-gray-900">My Appointments</h1>
+            <h2 class="text-xl font-semibold text-gray-900">My Appointments</h2>
             <p class="mt-2 text-sm text-gray-700">Manage your dental appointments</p>
         </div>
-        <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">                <a href="{{ route('dentist.index') }}" 
-                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    Book New Appointment
-                </a>
+        <div class="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+            <a href="{{ route('dentist.index') }}" 
+               class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                Book New Appointment
+            </a>
         </div>
     </div>
 
