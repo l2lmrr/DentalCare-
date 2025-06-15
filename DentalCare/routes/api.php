@@ -10,11 +10,10 @@ use App\Http\Controllers\Api\DentistAvailabilityController;
 |--------------------------------------------------------------------------
 */
 
-Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+Route::middleware(['web', 'auth', 'verified'])->group(function () {
     // Dentist Availability Endpoint
     Route::get('/dentists/{dentist}/availability', [DentistAvailabilityController::class, 'getAvailability'])
         ->name('api.dentists.availability')
         ->where('dentist', '[0-9]+');
-    
 });
 

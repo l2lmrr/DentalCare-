@@ -22,6 +22,7 @@
                             <div id="selectedDate" class="text-sm text-blue-600 font-medium mb-3"></div>
                             <div id="timeSlots" class="grid grid-cols-1 gap-2 max-h-[400px] overflow-y-auto">
                                 <!-- Time slots will be populated here -->
+                                testing
                             </div>
                             
                             <form id="appointmentForm" action="{{ route('appointment.store') }}" method="POST" class="mt-6 hidden">
@@ -54,7 +55,7 @@
 </div>
 
 @push('styles')
-<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css' rel='stylesheet' />
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.2.8/main.min.css' rel='stylesheet' />
 <style>
     #calendar {
         height: 550px;
@@ -252,108 +253,208 @@ document.addEventListener('DOMContentLoaded', function() {
         validRange: {
             start: new Date(),
         },
+        // Add custom content to date cells (optional enhancement)
+        dayCellDidMount: function(info) {
+            // You can add custom content to date cells here if needed
+            if (info.date < new Date() || info.date.getDay() === 0 || info.date.getDay() === 6) {
+                info.el.style.backgroundColor = '#f9fafb';
+                info.el.style.cursor = 'not-allowed';
+            }
+        }
     });
     
-    calendar.render();
-
-    function fetchTimeSlots(date) {
+    calendar.render();    async function retryFetch(url, options, maxRetries = 3) {
+        for (let i = 0; i < maxRetries; i++) {
+            try {
+                const response = await fetch(url, options);
+                
+                // Log the response for debugging
+                console.log('Response status:', response.status);
+                const text = await response.text();
+                console.log('Response text:', text);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                try {
+                    return JSON.parse(text);
+                } catch (e) {
+                    console.error('Failed to parse JSON:', text);
+                    throw new Error('Invalid JSON response');
+                }
+            } catch (error) {
+                console.error(`Attempt ${i + 1} failed:`, error);
+                if (i === maxRetries - 1) throw error;
+                await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+            }
+        }
+    }    function fetchTimeSlots(date) {
         const formattedDate = date.toISOString().split('T')[0];
-        const url = `/api/dentists/${dentistId}/availability?date=${formattedDate}`;
-        console.log('Fetching time slots for dentist:', dentistId, 'date:', formattedDate);
+        // Use the full URL to avoid any routing issues
+        const url = `${window.location.origin}/api/dentists/${dentistId}/availability?date=${formattedDate}`;
+        console.log('Fetching time slots for dentist:', dentistId, 'date:', formattedDate, 'URL:', url);
         
         // Show loading state
         const timeSlotsContainer = document.getElementById('timeSlotsContainer');
         const timeSlotsDiv = document.getElementById('timeSlots');
         const selectedDateDiv = document.getElementById('selectedDate');
+        const appointmentForm = document.getElementById('appointmentForm');
         
         timeSlotsContainer.classList.remove('hidden');
+        appointmentForm.classList.add('hidden');
         timeSlotsDiv.innerHTML = '<div class="text-center py-4"><div class="animate-spin inline-block w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full"></div></div>';
         selectedDateDiv.textContent = date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 
         // Get CSRF token from meta tag
         const token = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
-        fetch(url, {
+        retryFetch(url, {
             method: 'GET',
             headers: {
                 'Accept': 'application/json',
+                'Content-Type': 'application/json',
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': token
             },
-            credentials: 'same-origin'
-        })
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                return response.text().then(text => {
-                    console.error('Error response:', text);
-                    throw new Error('Failed to fetch time slots');
-                });
-            }
-            return response.json();
+            credentials: 'include'
         })
         .then(data => {
             console.log('Received data:', data);
-            displayTimeSlots(data, formattedDate);
+            
+            if (!data || !Array.isArray(data.slots)) {
+                throw new Error('Invalid response format');
+            }
+
+            if (data.slots.length === 0) {
+                timeSlotsDiv.innerHTML = `
+                    <div class="text-center py-4 text-gray-500">
+                        No available time slots for this date
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort slots by time
+            data.slots.sort((a, b) => a.time.localeCompare(b.time));
+
+            // Group slots by period
+            const slotsByPeriod = data.slots.reduce((acc, slot) => {
+                if (!acc[slot.period]) {
+                    acc[slot.period] = [];
+                }
+                acc[slot.period].push(slot);
+                return acc;
+            }, {});
+
+            // Clear existing slots
+            timeSlotsDiv.innerHTML = '';
+
+            // Render slots by period
+            if (slotsByPeriod.morning && slotsByPeriod.morning.length > 0) {
+                const morningDiv = document.createElement('div');
+                morningDiv.innerHTML = `
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Morning</h4>
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        ${slotsByPeriod.morning.map(slot => `
+                            <div class="time-slot morning" data-time="${slot.time}" data-date="${data.date}">
+                                ${slot.time}
+                                <span class="time-slot-badge">AM</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                timeSlotsDiv.appendChild(morningDiv);
+            }
+
+            if (slotsByPeriod.afternoon && slotsByPeriod.afternoon.length > 0) {
+                const afternoonDiv = document.createElement('div');
+                afternoonDiv.innerHTML = `
+                    <h4 class="text-sm font-medium text-gray-900 mb-2">Afternoon</h4>
+                    <div class="grid grid-cols-2 gap-2">
+                        ${slotsByPeriod.afternoon.map(slot => `
+                            <div class="time-slot afternoon" data-time="${slot.time}" data-date="${data.date}">
+                                ${slot.time}
+                                <span class="time-slot-badge">PM</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
+                timeSlotsDiv.appendChild(afternoonDiv);
+            }
+
+            // Add click event listeners to time slots
+            const timeSlots = timeSlotsDiv.querySelectorAll('.time-slot');
+            timeSlots.forEach(slot => {
+                slot.addEventListener('click', function() {
+                    timeSlots.forEach(s => s.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    const date = this.dataset.date;
+                    const time = this.dataset.time;
+                    const selectedDateTime = `${date} ${time}`;
+                    
+                    // Update form
+                    document.getElementById('selectedDateTime').value = selectedDateTime;
+                    document.getElementById('selectedTimeDisplay').textContent = 
+                        `${date} at ${time}`;
+                    document.getElementById('appointmentForm').classList.remove('hidden');
+                });
+            });
         })
         .catch(error => {
-            console.error('Error:', error);
-            timeSlotsDiv.innerHTML = '<div class="text-red-600 text-center py-4">Error loading time slots</div>';
+            console.error('Error fetching time slots:', error);
+            timeSlotsDiv.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <div class="text-sm text-red-800">
+                        Unable to load available time slots. Please try again later.
+                    </div>
+                </div>
+            `;
         });
     }
 
-    function displayTimeSlots(data, selectedDate) {
-        const container = document.getElementById('timeSlots');
-        const slots = data.slots || [];
+    // Add success message handler for form submission
+    const appointmentForm = document.getElementById('appointmentForm');
+    appointmentForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
         
-        if (slots.length === 0) {
-            container.innerHTML = '<div class="text-center text-gray-600">No available time slots for this date</div>';
-            return;
-        }
-
-        const morningSlots = slots.filter(time => {
-            const hour = parseInt(time.split(':')[0]);
-            return hour < 12;
-        });
-
-        const afternoonSlots = slots.filter(time => {
-            const hour = parseInt(time.split(':')[0]);
-            return hour >= 12;
-        });
-
-        let html = '<div class="space-y-4">';
-        
-        // Morning slots
-        if (morningSlots.length > 0) {
-            html += '<div class="bg-white p-4 rounded-lg shadow-sm">';
-            html += '<h3 class="text-lg font-semibold mb-3">Morning</h3>';
-            html += '<div class="grid grid-cols-2 gap-2">';
-            morningSlots.forEach(time => {
-                html += `<button type="button" onclick="selectTimeSlot(this)" data-time="${time}" class="time-slot morning py-2 px-4 text-sm rounded-md hover:bg-yellow-50">${formatTime(time)}</button>`;
+        try {
+            const response = await fetch(this.action, {
+                method: 'POST',
+                body: new FormData(this),
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                }
             });
-            html += '</div></div>';
-        }
 
-        // Afternoon slots
-        if (afternoonSlots.length > 0) {
-            html += '<div class="bg-white p-4 rounded-lg shadow-sm">';
-            html += '<h3 class="text-lg font-semibold mb-3">Afternoon</h3>';
-            html += '<div class="grid grid-cols-2 gap-2">';
-            afternoonSlots.forEach(time => {
-                html += `<button type="button" onclick="selectTimeSlot(this)" data-time="${time}" class="time-slot afternoon py-2 px-4 text-sm rounded-md hover:bg-blue-50">${formatTime(time)}</button>`;
-            });
-            html += '</div></div>';
-        }
+            if (!response.ok) {
+                throw new Error('Failed to book appointment');
+            }
 
-        html += '</div>';
-        container.innerHTML = html;
-    }    function formatTime(time) {
-        const [hours, minutes] = time.split(':');
-        const hour = parseInt(hours);
-        const ampm = hour >= 12 ? 'PM' : 'AM';
-        const hour12 = hour % 12 || 12;
-        return hour12 + ':' + minutes + ' ' + ampm;
-    }
+            const result = await response.json();
+            
+            // Show success message
+            timeSlotsDiv.innerHTML = `
+                <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div class="text-sm text-green-800">
+                        Your appointment has been booked successfully!
+                    </div>
+                </div>
+            `;
+            appointmentForm.classList.add('hidden');
+
+            // Refresh the calendar after a short delay
+            setTimeout(() => {
+                calendar.refetchEvents();
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error booking appointment:', error);
+            alert('Failed to book the appointment. Please try again.');
+        }
+    });
 });
 </script>
 @endpush

@@ -152,6 +152,12 @@ Route::middleware(['auth'])->group(function () {
         ->where('dentist', '[0-9]+');
 });
 
+// Dentist Availability Routes
+Route::get('/api/dentists/{dentist}/availability', [App\Http\Controllers\Api\DentistAvailabilityController::class, 'getAvailability'])
+    ->name('api.dentists.availability')
+    ->where('dentist', '[0-9]+')
+    ->middleware(['auth', 'verified']);
+
 // Fallback Route (404 Page)
 Route::fallback(function () {
     return view('errors.404');

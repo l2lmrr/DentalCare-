@@ -37,9 +37,18 @@ class DentistAvailabilityController extends Controller
     public function getAvailability(Request $request, $dentistId)
     {
         try {
+            Log::debug('Fetching availability', [
+                'dentist_id' => $dentistId,
+                'date' => $request->date,
+                'user' => $request->user()->id ?? 'not logged in'
+            ]);
+
             if (!$request->filled('date')) {
+                Log::warning('Missing date parameter in availability request');
                 return response()->json([
-                    'error' => 'Date parameter is required'
+                    'error' => 'Date parameter is required',
+                    'date' => null,
+                    'slots' => []
                 ], 400);
             }
 
@@ -48,8 +57,11 @@ class DentistAvailabilityController extends Controller
                          ->first();
 
             if (!$dentist) {
+                Log::warning('Dentist not found', ['dentist_id' => $dentistId]);
                 return response()->json([
-                    'error' => 'Dentist not found'
+                    'error' => 'Dentist not found',
+                    'date' => $request->date,
+                    'slots' => []
                 ], 404);
             }
 
@@ -97,7 +109,10 @@ class DentistAvailabilityController extends Controller
                 while ($start < $end) {
                     if (!in_array($start->format('H:i'), $bookedSlots) && 
                         (!$date->isToday() || $start->isFuture())) {
-                        $availableSlots[] = $start->format('H:i');
+                        $availableSlots[] = [
+                            'time' => $start->format('H:i'),
+                            'period' => 'morning'
+                        ];
                     }
                     $start->addMinutes(30);
                 }
@@ -111,7 +126,10 @@ class DentistAvailabilityController extends Controller
                 while ($start < $end) {
                     if (!in_array($start->format('H:i'), $bookedSlots) && 
                         (!$date->isToday() || $start->isFuture())) {
-                        $availableSlots[] = $start->format('H:i');
+                        $availableSlots[] = [
+                            'time' => $start->format('H:i'),
+                            'period' => 'afternoon'
+                        ];
                     }
                     $start->addMinutes(30);
                 }
@@ -123,9 +141,17 @@ class DentistAvailabilityController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Availability error: ' . $e->getMessage());
+            Log::error('Availability error: ' . $e->getMessage(), [
+                'dentist_id' => $dentistId,
+                'date' => $request->date ?? null,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
             return response()->json([
-                'error' => 'Failed to fetch availability'
+                'error' => 'Failed to fetch availability',
+                'date' => $request->date ?? null,
+                'slots' => []
             ], 500);
         }
     }
