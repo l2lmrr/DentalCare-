@@ -183,25 +183,14 @@ class AppointmentController extends Controller
         $this->authorize('delete', $appointment);
         $appointment->delete();
         return redirect()->route('dashboard')->with('success', 'Appointment deleted');
-    }
-
-    public function cancel(RendezVous $appointment)
+    }    public function cancel(RendezVous $appointment)
     {
-        $this->authorize('update', $appointment);
-
-        // Check if appointment is in the past
-        if ($appointment->date_heure->isPast()) {
-            return back()->with('error', 'Cannot cancel past appointments');
-        }
-
         $appointment->update(['statut' => 'annulé']);
-
         return redirect()->back()->with('success', 'Appointment cancelled successfully');
     }
 
     public function confirm(RendezVous $appointment)
     {
-        $this->authorize('update', $appointment);
         $appointment->update(['statut' => 'confirmé']);
         return redirect()->back()->with('success', 'Appointment confirmed');
     }

@@ -67,6 +67,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/my', [AppointmentController::class, 'index'])->name('my');
         Route::post('/store', [AppointmentController::class, 'store'])->name('store');
         Route::post('/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('cancel');
+        Route::post('/{appointment}/confirm', [AppointmentController::class, 'confirm'])->name('confirm');
     });
 
     // Patient Routes

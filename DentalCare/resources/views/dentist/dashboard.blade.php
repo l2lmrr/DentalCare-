@@ -158,7 +158,9 @@
                                             @if($appointment->statut === 'confirmé')
                                             <form action="{{ route('appointments.cancel', $appointment) }}" method="POST" class="inline">
                                                 @csrf
-                                                <button type="submit" class="text-red-600 hover:text-red-900 mr-3">Cancel</button>
+                                                <button type="submit" 
+                                                        onclick="return confirm('Are you sure you want to cancel this appointment?')"
+                                                        class="text-red-600 hover:text-red-900 mr-3">Cancel</button>
                                             </form>
                                             @elseif($appointment->statut === 'annulé')
                                             <form action="{{ route('appointments.confirm', $appointment) }}" method="POST" class="inline">
@@ -223,7 +225,9 @@
                                             @if($appointment->statut === 'confirmé')
                                             <form action="{{ route('appointments.cancel', $appointment) }}" method="POST" class="inline">
                                                 @csrf
-                                                <button type="submit" class="text-red-600 hover:text-red-900 mr-3">Cancel</button>
+                                                <button type="submit" 
+                                                        onclick="return confirm('Are you sure you want to cancel this appointment?')"
+                                                        class="text-red-600 hover:text-red-900 mr-3">Cancel</button>
                                             </form>
                                             @elseif($appointment->statut === 'annulé')
                                             <form action="{{ route('appointments.confirm', $appointment) }}" method="POST" class="inline">
