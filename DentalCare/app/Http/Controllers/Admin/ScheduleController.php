@@ -12,7 +12,6 @@ class ScheduleController extends Controller
 {
     public function index()
     {
-        // Get all working hours with their associated dentists
         $schedules = PlageHoraire::with('dentist')
             ->orderBy('jour')
             ->orderBy('heure_debut')
@@ -32,10 +31,8 @@ class ScheduleController extends Controller
                 ];
             });
 
-        // Get all dentists for the add schedule form
         $dentists = User::where('role', 'praticien')->get();
         
-        // Days of week for the form
         $days = [
             'monday' => 'Monday',
             'tuesday' => 'Tuesday',

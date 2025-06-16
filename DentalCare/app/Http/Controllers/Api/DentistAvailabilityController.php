@@ -101,7 +101,6 @@ class DentistAvailabilityController extends Controller
             $availableSlots = [];
             $daySchedule = $this->workingHours[$dayName];
 
-            // Generate morning slots
             if (isset($daySchedule['morning'])) {
                 $start = Carbon::parse($date->format('Y-m-d') . ' ' . $daySchedule['morning'][0]);
                 $end = Carbon::parse($date->format('Y-m-d') . ' ' . $daySchedule['morning'][1]);
@@ -118,7 +117,6 @@ class DentistAvailabilityController extends Controller
                 }
             }
 
-            // Generate afternoon slots
             if (isset($daySchedule['afternoon'])) {
                 $start = Carbon::parse($date->format('Y-m-d') . ' ' . $daySchedule['afternoon'][0]);
                 $end = Carbon::parse($date->format('Y-m-d') . ' ' . $daySchedule['afternoon'][1]);

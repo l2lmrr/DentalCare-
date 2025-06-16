@@ -74,7 +74,6 @@ class MedicalRecordController extends Controller
         try {
             $patient = User::findOrFail($patientId);
             
-            // Check if the current user is authorized to view these records
             if (!Auth::user()->role === 'dentist' && Auth::id() !== $patientId) {
                 abort(403, 'Unauthorized');
             }
@@ -82,7 +81,7 @@ class MedicalRecordController extends Controller
             $records = DossierMedical::where('patient_id', $patientId)
                 ->with(['dentist'])
                 ->orderBy('created_at', 'desc')
-                ->paginate(10); // Add pagination here
+                ->paginate(10); 
                 
             return view('modals.patient-records', [
                 'records' => $records,

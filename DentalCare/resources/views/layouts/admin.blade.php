@@ -297,7 +297,6 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     
     <script>
-        // Mobile sidebar toggle functionality
         $(document).ready(function() {
             $('.navbar-toggler').on('click', function() {
                 $('.sidebar').toggleClass('active');

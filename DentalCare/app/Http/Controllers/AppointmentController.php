@@ -12,8 +12,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class AppointmentController extends Controller
 {
-    use AuthorizesRequests;// Constants
-    const SLOT_DURATION = 30; // minutes
+    use AuthorizesRequests;
+    const SLOT_DURATION = 30; 
 
     public function index()
     {
@@ -54,7 +54,6 @@ class AppointmentController extends Controller
         $dayOfWeek = strtolower($selectedDateTime->isoFormat('dddd'));
         $time = $selectedDateTime->format('H:i:s');
 
-        // Check if dentist is available at this time
         $isWithinWorkingHours = $dentist->workingHours()
             ->where('jour', $dayOfWeek)
             ->where('heure_debut', '<=', $time)
@@ -65,12 +64,10 @@ class AppointmentController extends Controller
             return back()->withErrors(['date_heure' => 'Selected time is outside of dentist\'s working hours'])->withInput();
         }
 
-        // Check for existing appointments
         if (!RendezVous::isTimeSlotAvailable($dentist->id, $validated['date_heure'])) {
             return back()->withErrors(['date_heure' => 'This time slot is already booked'])->withInput();
         }
 
-        // Create the appointment
         $appointment = RendezVous::create([
             'patient_id' => auth()->id(),
             'dentist_id' => $validated['dentist_id'],
@@ -84,22 +81,18 @@ class AppointmentController extends Controller
     {
         $this->authorize('update', $appointment);
         
-        // Check if appointment is in the past
         if ($appointment->date_heure->isPast()) {
             return response()->json([
                 'error' => 'Cannot edit past appointments'
             ], 403);
         }
 
-        // Get dentist's working hours
         $workingHours = PlageHoraire::where('dentist_id', $appointment->dentist_id)
             ->orderBy('jour')
             ->get();
             
-        // Get available time slots
         $availableSlots = $this->getAvailableTimeSlots($appointment->dentist);
 
-        // Return the edit form view
         return view('modals.edit-appointment', compact('appointment', 'workingHours', 'availableSlots'));
     }
 
@@ -107,7 +100,6 @@ class AppointmentController extends Controller
     {
         $this->authorize('update', $appointment);
 
-        // Check if appointment is in the past
         if ($appointment->date_heure->isPast()) {
             return back()->with('error', 'Cannot edit past appointments');
         }
@@ -126,7 +118,7 @@ class AppointmentController extends Controller
     protected function getAvailableTimeSlots(User $dentist)
     {
         $slots = [];
-        $daysToShow = 14; // Show availability for next 14 days
+        $daysToShow = 14; 
 
         for ($i = 0; $i < $daysToShow; $i++) {
             $date = now()->addDays($i);
@@ -140,11 +132,9 @@ class AppointmentController extends Controller
                 $startTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->heure_debut);
                 $endTime = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->heure_fin);
 
-                // Generate slots
                 while ($startTime->copy()->addMinutes(self::SLOT_DURATION)->lte($endTime)) {
                     $slotDateTime = $startTime->format('Y-m-d H:i:s');
                     
-                    // Check if slot is available
                     if (RendezVous::isTimeSlotAvailable($dentist->id, $slotDateTime)) {
                         $slots[] = $slotDateTime;
                     }
@@ -157,7 +147,6 @@ class AppointmentController extends Controller
         return $slots;
     }    public function calendar(Request $request)
     {
-        // Find the dentist user and load their relationships
         $dentist = User::with(['dentist', 'workingHours'])
             ->where('role', 'dentist')
             ->findOrFail($request->query('id'));

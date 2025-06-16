@@ -10,13 +10,11 @@ use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
-    // Show registration form
     public function showRegisterForm()
     {
         return view('auth.register');
     }
 
-    // Handle registration
    public function register(Request $request)
     {
         $validated = $request->validate([
@@ -46,14 +44,13 @@ class AuthController extends Controller
             'phone' => $validated['phone'],
             'address' => $validated['address'],
             'date_of_birth' => $validated['date_of_birth'],
-        ]);        // If registering as a dentist
+        ]);       
         if ($validated['role'] === 'dentist') {
             Dentist::create([
                 'user_id' => $user->id,
                 'bio' => $validated['bio'] ?? '',
                 'license_number' => $validated['license_number'],
                 'years_of_experience' => $validated['years_of_experience'] ?? 0,
-                // photo can be added later through profile update
             ]);
         }
 
@@ -61,7 +58,6 @@ class AuthController extends Controller
 
         return $this->redirectBasedOnRole($user->role);
     }
-    // Show login form
     public function showLoginForm()
     {
         return view('auth.login');
@@ -86,7 +82,6 @@ class AuthController extends Controller
         ])->onlyInput('email');
     }
 
-    // Handle logout
     public function logout(Request $request)
     {
         Auth::logout();
@@ -95,7 +90,6 @@ class AuthController extends Controller
         return redirect()->route('home');
     }
 
-    // Role-based redirection
     protected function redirectBasedOnRole(string $role)
     {
         switch ($role) {

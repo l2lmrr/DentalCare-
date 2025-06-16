@@ -17,19 +17,18 @@ class AppointmentController extends Controller
         }
 
         $date = Carbon::parse($request->date);
-        $dayName = strtolower($date->format('l')); // Get day name in lowercase
+        $dayName = strtolower($date->format('l')); 
 
-        // Get working hours for the specified day
         $workingHours = $dentist->dentist->plagesHoraires()
             ->where('jour', $dayName)
             ->get();
 
         if ($workingHours->isEmpty()) {
-            return response()->json([]); // No working hours for this day
+            return response()->json([]); 
         }
 
         $availableSlots = [];
-        $slotDuration = 30; // minutes per slot
+        $slotDuration = 30; 
 
         foreach ($workingHours as $hours) {
             $startTime = Carbon::parse($date->format('Y-m-d') . ' ' . $hours->heure_debut);
@@ -38,7 +37,6 @@ class AppointmentController extends Controller
             while ($startTime->addMinutes($slotDuration)->lte($endTime)) {
                 $slotTime = $startTime->format('H:i');
                 
-                // Check if slot is not already booked
                 $isBooked = RendezVous::where('dentist_id', $dentist->id)
                     ->whereDate('date_heure', $date)
                     ->whereTime('date_heure', $slotTime)
