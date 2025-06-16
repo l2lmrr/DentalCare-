@@ -62,5 +62,30 @@ class MedicalRecordController extends Controller
     {
         $medicalRecord->delete();
         return redirect()->route('dashboard')->with('success', 'Medical record deleted');
+    }    public function getPatientRecords($patientId)
+    {
+        try {
+            $patient = User::findOrFail($patientId);
+            
+            // Check if the current user is authorized to view these records
+            if (!Auth::user()->role === 'dentist' && Auth::id() !== $patientId) {
+                abort(403, 'Unauthorized');
+            }
+            
+            $records = DossierMedical::where('patient_id', $patientId)
+                ->with(['dentist'])
+                ->orderBy('created_at', 'desc')
+                ->paginate(10); // Add pagination here
+                
+            return view('modals.patient-records', [
+                'records' => $records,
+                'patient' => $patient
+            ]);
+        } catch (\Exception $e) {
+            if (request()->ajax()) {
+                return response()->json(['error' => 'Failed to load medical records'], 500);
+            }
+            return back()->with('error', 'Failed to load medical records');
+        }
     }
 }

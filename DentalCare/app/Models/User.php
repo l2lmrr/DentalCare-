@@ -127,4 +127,20 @@ class User extends Authenticatable
             ->exists();
     }
 
+    public function medicalRecords()
+    {
+        return $this->hasMany(DossierMedical::class, 'patient_id');
+    }
+
+    public function getLastVisitAttribute()
+    {
+        $lastRecord = $this->medicalRecords()->latest()->first();
+        return $lastRecord ? $lastRecord->created_at->format('Y-m-d') : null;
+    }
+
+    public function getRecordsCountAttribute()
+    {
+        return $this->medicalRecords()->count();
+    }
+
 }

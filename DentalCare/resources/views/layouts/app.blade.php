@@ -42,9 +42,9 @@
     <!-- Main Content -->
     <main class="pt-20">
         @yield('content')
-    </main>    @include('partials.footer')
-
-    <!-- JavaScript -->
+    </main>    @include('partials.footer')    <!-- JavaScript -->
+    <script src="{{ asset('js/utilities.js') }}"></script>
+    @yield('scripts')
     @stack('scripts')
     <script>
         document.addEventListener('DOMContentLoaded', function() {

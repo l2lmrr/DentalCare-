@@ -11,10 +11,14 @@
             <a href="#dentists" class="text-gray-700 hover:text-blue-600 transition">Our Dentists</a>
             <a href="#testimonials" class="text-gray-700 hover:text-blue-600 transition">Testimonials</a>
             
-            @auth
-                <a href="{{ route('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
+            @auth                <a href="{{ route('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition">
                     Dashboard
                 </a>
+                @if(Auth::user()->role === 'patient')
+                    <a href="{{ route('patient.medical-records') }}" class="text-gray-700 hover:text-blue-600 transition">
+                        Medical Records
+                    </a>
+                @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="text-gray-700 hover:text-blue-600 transition">Logout</button>
@@ -40,10 +44,14 @@
             <a href="#dentists" class="text-gray-700 hover:text-blue-600 transition">Our Dentists</a>
             <a href="#testimonials" class="text-gray-700 hover:text-blue-600 transition">Testimonials</a>
             
-            @auth
-                <a href="{{ route('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-center">
+            @auth                <a href="{{ route('dashboard') }}" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition text-center">
                     Dashboard
                 </a>
+                @if(Auth::user()->role === 'patient')
+                    <a href="{{ route('patient.medical-records') }}" class="text-gray-700 hover:text-blue-600 transition">
+                        Medical Records
+                    </a>
+                @endif
                 <form method="POST" action="{{ route('logout') }}">
                     @csrf
                     <button type="submit" class="text-gray-700 hover:text-blue-600 transition w-full text-left">Logout</button>

@@ -15,12 +15,6 @@ class AppointmentController extends Controller
     use AuthorizesRequests;// Constants
     const SLOT_DURATION = 30; // minutes
 
-    public function __construct()
-    {
-        // Remove any auth middleware to match admin functionality
-        // $this->middleware('auth');
-    }
-
     public function index()
     {
         $appointments = RendezVous::with(['dentist.dentist', 'patient'])
@@ -86,101 +80,47 @@ class AppointmentController extends Controller
         ]);
 
         return redirect()->route('dashboard')->with('success', 'Appointment booked successfully!');
+    }    public function edit(RendezVous $appointment)
+    {
+        $this->authorize('update', $appointment);
+        
+        // Check if appointment is in the past
+        if ($appointment->date_heure->isPast()) {
+            return response()->json([
+                'error' => 'Cannot edit past appointments'
+            ], 403);
+        }
+
+        // Get dentist's working hours
+        $workingHours = PlageHoraire::where('dentist_id', $appointment->dentist_id)
+            ->orderBy('jour')
+            ->get();
+            
+        // Get available time slots
+        $availableSlots = $this->getAvailableTimeSlots($appointment->dentist);
+
+        // Return the edit form view
+        return view('modals.edit-appointment', compact('appointment', 'workingHours', 'availableSlots'));
     }
 
-    public function edit(RendezVous $appointment)
+    public function update(Request $request, RendezVous $appointment)
     {
-        try {
-            \Log::info('Edit appointment request', ['appointment_id' => $appointment->id]);
-            
-            // Check if appointment is in the past
-            if ($appointment->date_heure->isPast()) {
-                return response()->json([
-                    'error' => 'Cannot edit past appointments'
-                ], 403);
-            }
+        $this->authorize('update', $appointment);
 
-            // Get available time slots
-            $availableSlots = $this->getAvailableTimeSlots($appointment->dentist->user);
-            
-            // Add current appointment time to available slots if it's not in the list
-            if (!in_array($appointment->date_heure->format('Y-m-d H:i:s'), $availableSlots)) {
-                $availableSlots[] = $appointment->date_heure->format('Y-m-d H:i:s');
-                sort($availableSlots);
-            }
-
-            // Get dentist's working hours
-            $workingHours = PlageHoraire::where('dentist_id', $appointment->dentist_id)
-                ->orderBy('jour')
-                ->get();
-
-            $view = view('appointments.edit', [
-                'appointment' => $appointment,
-                'workingHours' => $workingHours,
-                'availableSlots' => $availableSlots
-            ])->render();
-
-            return response()->json([
-                'html' => $view,
-                'appointment' => $appointment->toArray(),
-                'availableSlots' => $availableSlots,
-                'success' => true
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Error in edit appointment', [
-                'appointment_id' => $appointment->id,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
-            
-            return response()->json([
-                'error' => 'Failed to load appointment data',
-                'message' => config('app.debug') ? $e->getMessage() : null
-            ], 500);
+        // Check if appointment is in the past
+        if ($appointment->date_heure->isPast()) {
+            return back()->with('error', 'Cannot edit past appointments');
         }
-    }    public function update(Request $request, RendezVous $appointment)
-    {
-        try {
-            // Check if appointment is in the past
-            if ($appointment->date_heure->isPast()) {
-                return response()->json([
-                    'error' => 'Cannot edit past appointments'
-                ], 403);
-            }
 
             $validated = $request->validate([
-                'date_heure' => 'required|date|after:now',
-                'notes' => 'nullable|string|max:1000',
-                'statut' => 'required|in:confirmé,annulé,reporté',
-            ]);
+                    'date_heure' => 'required|date',
+                    'statut' => 'required|string',
+                    'notes' => 'nullable|string'
+                ]);
 
-            // Check if the new time slot is available (ignore current appointment)
-            if (!RendezVous::isTimeSlotAvailable($appointment->dentist_id, $validated['date_heure'], $appointment->id)) {
-                return response()->json([
-                    'error' => 'This time slot is already booked'
-                ], 422);
-            }
+        $appointment->update($validated);
 
-            $appointment->update($validated);
-            
-            return response()->json([
-                'message' => 'Appointment updated successfully',
-                'appointment' => $appointment->fresh(),
-                'success' => true
-            ]);
-            
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'error' => 'Validation failed',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'error' => 'Failed to update appointment',
-                'message' => $e->getMessage()
-            ], 500);
-        }
+            return response()->json(['message' => 'Appointment updated successfully']);
     }
 
     protected function getAvailableTimeSlots(User $dentist)
@@ -236,6 +176,8 @@ class AppointmentController extends Controller
     {
         $this->authorize('view', $appointment);
         return view('appointments.show', compact('appointment'));
+        return response()->json($appointment);
+
     }
 
     public function destroy(RendezVous $appointment)

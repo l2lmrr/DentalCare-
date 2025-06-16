@@ -8,6 +8,8 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\DentistController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\MedicalRecordController;
+use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PlageHoraireController;
 use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\SettingController;
 use App\Http\Controllers\Admin\ReportController;
@@ -66,6 +68,8 @@ Route::middleware('auth')->group(function () {
         Route::get('/calendar', [AppointmentController::class, 'calendar'])->name('calendar');
         Route::get('/my', [AppointmentController::class, 'index'])->name('my');
         Route::post('/store', [AppointmentController::class, 'store'])->name('store');
+        Route::get('/{appointment}/edit', [AppointmentController::class, 'edit'])->name('edit');
+        Route::patch('/{appointment}', [AppointmentController::class, 'update'])->name('update');
         Route::post('/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('cancel');
         Route::post('/{appointment}/confirm', [AppointmentController::class, 'confirm'])->name('confirm');
     });
@@ -73,6 +77,7 @@ Route::middleware('auth')->group(function () {
     // Patient Routes
     Route::middleware('role:patient')->group(function () {
         Route::get('/patient/dashboard', [DashboardController::class, 'patientDashboard'])->name('patient.dashboard');
+        Route::get('/patient/medical-records', [PatientController::class, 'medicalRecords'])->name('patient.medical-records');
     });
 
     // Dentist Routes
@@ -86,8 +91,7 @@ Route::middleware('auth')->group(function () {
     // Dentist and Admin appointment management
     Route::middleware('role:praticien,admin')->group(function () {
         Route::get('/appointments/{appointment}', [AppointmentController::class, 'show'])->name('appointments.show');
-        Route::get('/appointments/{appointment}/edit', [AppointmentController::class, 'edit'])->name('appointments.edit');
-        Route::patch('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
+        Route::put('/appointments/{appointment}', [AppointmentController::class, 'update'])->name('appointments.update');
         Route::delete('/appointments/{appointment}', [AppointmentController::class, 'destroy'])->name('appointments.destroy');
     });
 
@@ -103,12 +107,12 @@ Route::middleware('auth')->group(function () {
 
     // Working Hours Management (for dentists and admins)
     Route::middleware('role:praticien,admin')->prefix('working-hours')->group(function () {
-        Route::get('/', [PlageHoraireController::class, 'index'])->name('working-hours.index');
-        Route::get('/create', [PlageHoraireController::class, 'create'])->name('working-hours.create');
-        Route::post('/', [PlageHoraireController::class, 'store'])->name('working-hours.store');
-        Route::get('/{plageHoraire}/edit', [PlageHoraireController::class, 'edit'])->name('working-hours.edit');
-        Route::patch('/{plageHoraire}', [PlageHoraireController::class, 'update'])->name('working-hours.update');
-        Route::delete('/{plageHoraire}', [PlageHoraireController::class, 'destroy'])->name('working-hours.destroy');
+        Route::get('/', [\App\Http\Controllers\PlageHoraireController::class, 'index'])->name('working-hours.index');
+        Route::get('/create', [\App\Http\Controllers\PlageHoraireController::class, 'create'])->name('working-hours.create');
+        Route::post('/', [\App\Http\Controllers\PlageHoraireController::class, 'store'])->name('working-hours.store');
+        Route::get('/{plageHoraire}/edit', [\App\Http\Controllers\PlageHoraireController::class, 'edit'])->name('working-hours.edit');
+        Route::patch('/{plageHoraire}', [\App\Http\Controllers\PlageHoraireController::class, 'update'])->name('working-hours.update');
+        Route::delete('/{plageHoraire}', [\App\Http\Controllers\PlageHoraireController::class, 'destroy'])->name('working-hours.destroy');
     });
 
     // Admin Routes
@@ -136,27 +140,23 @@ Route::middleware('auth')->group(function () {
     Route::post('/appointments', [AppointmentController::class, 'store'])->name('appointment.store');
     Route::get('/my-appointments', [AppointmentController::class, 'index'])->name('patient.appointments');
 
-    // Dentist Routes
-    Route::middleware(['auth', 'role:dentist'])->group(function () {
-        Route::get('/dentist/dashboard', [DentistController::class, 'dashboard'])->name('dentist.dashboard');
-        Route::get('/dentist/appointments', [AppointmentController::class, 'dentistAppointments'])->name('dentist.appointments');
-        Route::get('/dentist/patients', [DentistController::class, 'patients'])->name('dentist.patients');
-        Route::get('/dentist/calendar', [DentistController::class, 'calendar'])->name('dentist.calendar');
+
+});    // Calendar and Patient Records Routes
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/calendar/{dentist}', [AppointmentController::class, 'calendar'])
+            ->name('calendar.show')
+            ->where('dentist', '[0-9]+');
+            
+        // Patient Records Route
+        Route::get('/patients/{patient}/records', [MedicalRecordController::class, 'getPatientRecords'])
+            ->name('patients.records')
+            ->where('patient', '[0-9]+');
     });
-});
 
-// Calendar Routes
-Route::middleware(['auth'])->group(function () {
-    Route::get('/calendar/{dentist}', [AppointmentController::class, 'calendar'])
-        ->name('calendar.show')
+    // Dentist Availability Routes
+    Route::get('/api/dentists/{dentist}/availability', [App\Http\Controllers\Api\DentistAvailabilityController::class, 'getAvailability'])
+        ->name('api.dentists.availability')
         ->where('dentist', '[0-9]+');
-});
-
-// Dentist Availability Routes
-Route::get('/api/dentists/{dentist}/availability', [App\Http\Controllers\Api\DentistAvailabilityController::class, 'getAvailability'])
-    ->name('api.dentists.availability')
-    ->where('dentist', '[0-9]+')
-    ->middleware(['auth', 'verified']);
 
 // Fallback Route (404 Page)
 Route::fallback(function () {

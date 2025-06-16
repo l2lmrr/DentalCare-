@@ -283,7 +283,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="text-sm text-gray-900">
-                                            {{ $patient->last_visit ? $patient->last_visit->format('M d, Y') : 'Never' }}
+                                            {{ $patient->last_visit ?? 'Never' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -392,63 +392,48 @@
                         Edit Appointment
                     </h3>
                     <div class="mt-2">
-                        <form id="editAppointmentForm" method="POST">
+                        <form id="editAppointmentForm" method="POST" onsubmit="return handleFormSubmit(event)">
                             @csrf
                             @method('PUT')
-                            
-                            <div class="grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                                <!-- Date Input -->
-                                <div class="sm:col-span-3">
+                            <input type="hidden" name="appointment_id" id="appointment_id">
+                            <div class="space-y-4">
+                                <div>
                                     <label for="appointment_date" class="block text-sm font-medium text-gray-700">Date</label>
-                                    <div class="mt-1">
-                                        <input type="date" name="appointment_date" id="appointment_date" 
-                                               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                    </div>
+                                    <input type="date" id="appointment_date" name="date" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                                 </div>
-                                
-                                <!-- Time Input -->
-                                <div class="sm:col-span-3">
+                                <div>
                                     <label for="appointment_time" class="block text-sm font-medium text-gray-700">Time</label>
-                                    <div class="mt-1">
-                                        <input type="time" name="appointment_time" id="appointment_time" 
-                                               class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md">
-                                    </div>
+                                    <input type="time" id="appointment_time" name="time" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm" required>
                                 </div>
-                                
-                                <!-- Status Select -->
-                                <div class="sm:col-span-6">
+                                <div>
                                     <label for="appointment_status" class="block text-sm font-medium text-gray-700">Status</label>
-                                    <select id="appointment_status" name="appointment_status" 
-                                            class="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md">
+                                    <select id="appointment_status" name="statut" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
                                         <option value="confirmé">Confirmed</option>
+                                        <option value="en_attente">Pending</option>
                                         <option value="annulé">Cancelled</option>
-                                        <option value="reporté">Postponed</option>
                                     </select>
                                 </div>
-                                
-                                <!-- Notes Textarea -->
-                                <div class="sm:col-span-6">
+                                <div>
                                     <label for="appointment_notes" class="block text-sm font-medium text-gray-700">Notes</label>
-                                    <div class="mt-1">
-                                        <textarea id="appointment_notes" name="appointment_notes" rows="3" 
-                                                  class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"></textarea>
-                                    </div>
+                                    <textarea id="appointment_notes" name="notes" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"></textarea>
                                 </div>
                             </div>
-                        </form>
                     </div>
                 </div>
             </div>
             <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-                <button type="button" onclick="submitAppointmentForm()" 
-                        class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
+                <button type="submit" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-indigo-600 text-base font-medium text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:col-start-2 sm:text-sm">
                     Save changes
                 </button>
-                <button type="button" onclick="closeModal()" 
-                        class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
+                <button type="button" onclick="closeModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
                     Cancel
                 </button>
             </div>
+        </form>
+            
+        <div id="successMessage" class="hidden fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded" role="alert">
+            Appointment updated successfully!
+        </div>
         </div>
     </div>
 </div>
@@ -533,34 +518,74 @@
         });
     });
 
-    // Appointment Modal Functions
+    function handleFormSubmit(event) {
+        event.preventDefault();
+        const form = event.target;
+        const formData = new FormData(form);
+        
+        // Combine date and time
+        const date = formData.get('date');
+        const time = formData.get('time');
+        formData.set('date_heure', `${date} ${time}`);
+        
+        // Get the appointment ID
+        const appointmentId = document.getElementById('appointment_id').value;
+        
+        // Submit the form
+        fetch(`/appointments/${appointmentId}`, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show success message
+            const successMessage = document.getElementById('successMessage');
+            successMessage.classList.remove('hidden');
+            
+            // Hide message and close modal after delay
+            setTimeout(() => {
+                successMessage.classList.add('hidden');
+                closeModal();
+                // Reload page to show updated data
+                window.location.reload();
+            }, 2000);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error updating appointment');
+        });
+
+        return false;
+    }
+
     function openEditAppointmentModal(appointmentId) {
+        const modal = document.getElementById('editAppointmentModal');
+        const form = document.getElementById('editAppointmentForm');
+        
+        if (!modal || !form) {
+            console.error('Modal or form not found');
+            return;
+        }
+
+        // Set the appointment ID
+        document.getElementById('appointment_id').value = appointmentId;
+        
+        // Show modal
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+
         // Fetch appointment data
         fetch(`/appointments/${appointmentId}`)
-
-    
             .then(response => response.json())
             .then(data => {
-                const modal = document.getElementById('editAppointmentModal');
-                alert('testing');
-                // Set form action
-                const form = document.getElementById('editAppointmentForm');
-                form.action = `/appointments/${appointmentId}`;
-                
-                // Split date and time
                 const dateTime = new Date(data.date_heure);
-                const dateStr = dateTime.toISOString().split('T')[0];
-                const timeStr = dateTime.toTimeString().substring(0, 5);
-                
-                // Fill form fields
-                document.getElementById('appointment_date').value = dateStr;
-                document.getElementById('appointment_time').value = timeStr;
+                document.getElementById('appointment_date').value = dateTime.toISOString().split('T')[0];
+                document.getElementById('appointment_time').value = dateTime.toTimeString().slice(0, 5);
                 document.getElementById('appointment_status').value = data.statut;
                 document.getElementById('appointment_notes').value = data.notes || '';
-                
-                // Show modal with animation
-                modal.classList.remove('hidden');
-                document.body.classList.add('overflow-hidden');
             })
             .catch(error => {
                 console.error('Error:', error);
@@ -568,9 +593,12 @@
             });
     }
 
-    // New function to submit the form
-    function submitAppointmentForm() {
-        document.getElementById('editAppointmentForm').submit();
+    function closeModal() {
+        const modal = document.getElementById('editAppointmentModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+        }
     }
 
     // Other Modal Functions
@@ -646,13 +674,6 @@
             });
     }
 
-    function closeModal() {
-        document.querySelectorAll('[id$="Modal"]').forEach(modal => {
-            modal.classList.add('hidden');
-        });
-        document.body.classList.remove('overflow-hidden');
-    }
-
     // Close modal when clicking outside
     window.onclick = function(event) {
         document.querySelectorAll('[id$="Modal"]').forEach(modal => {
@@ -663,4 +684,4 @@
         });
     }
 </script>
-@endsection
+@endsection 
