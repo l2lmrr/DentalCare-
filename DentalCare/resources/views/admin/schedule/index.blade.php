@@ -24,83 +24,50 @@
                                     <th>Duration</th>
                                     <th>Actions</th>
                                 </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($dentists as $dentist)
-                                    @if($dentist->workingHours && $dentist->workingHours->count() > 0)
-                                        @foreach($dentist->workingHours as $schedule)
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="avatar avatar-sm me-3">
-                                                        <span class="avatar-text">{{ substr($dentist->name, 0, 1) }}</span>
-                                                    </div>
-                                                    <div>
-                                                        <h6 class="mb-0">{{ $dentist->name }}</h6>
-                                                        <small class="text-muted">ID: {{ $dentist->id }}</small>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span class="day-badge">{{ ucfirst($schedule->jour) }}</span>
-                                            </td>
-                                            <td>
-                                                <div class="time-slot">
-                                                    <span class="start-time">{{ \Carbon\Carbon::parse($schedule->heure_debut)->format('h:i A') }}</span>
-                                                    <span class="time-separator">to</span>
-                                                    <span class="end-time">{{ \Carbon\Carbon::parse($schedule->heure_fin)->format('h:i A') }}</span>
-                                                </div>
-                                            </td>
-                                            <td>
-                                                @php
-                                                    $start = \Carbon\Carbon::parse($schedule->heure_debut);
-                                                    $end = \Carbon\Carbon::parse($schedule->heure_fin);
-                                                    $hours = $start->diffInHours($end);
-                                                    $minutes = $start->diffInMinutes($end) % 60;
-                                                @endphp
-                                                <span class="duration-badge">
-                                                    {{ $hours }}h {{ $minutes > 0 ? $minutes.'m' : '' }}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div class="actions">
-                                                    <form action="{{ route('admin.schedule.delete', $schedule->id) }}" method="POST" class="d-inline">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="btn btn-icon btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this schedule?')" data-bs-toggle="tooltip" title="Delete">
-                                                            <i class="fas fa-trash"></i>
-                                                        </button>
-                                                    </form>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                        @endforeach
-                                    @else
-                                        <tr>
-                                            <td>
-                                                <div class="d-flex align-items-center">
-                                                    <div class="avatar avatar-sm me-3">
-                                                        <span class="avatar-text">{{ substr($dentist->name, 0, 1) }}</span>
-                                                    </div>
-                                                    <div>
-                                                        <h6 class="mb-0">{{ $dentist->name }}</h6>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td colspan="4">
-                                                <div class="no-schedule">
-                                                    <i class="fas fa-calendar-times me-2"></i> No working hours set
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    @endif
+                            </thead>                            <tbody>
+                                @forelse($schedules as $schedule)
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar avatar-sm me-3">
+                                                <span class="avatar-text">{{ substr($schedule['dentist']->name, 0, 1) }}</span>
+                                            </div>
+                                            <div>
+                                                <h6 class="mb-0">Dr. {{ $schedule['dentist']->name }}</h6>
+                                                <small class="text-muted">ID: {{ $schedule['dentist']->id }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="day-badge">{{ $schedule['day'] }}</span>
+                                    </td>
+                                    <td>
+                                        <div class="time-slot">
+                                            <span class="start-time">{{ date('h:i A', strtotime($schedule['start_time'])) }}</span>
+                                            <span class="time-separator">to</span>
+                                            <span class="end-time">{{ date('h:i A', strtotime($schedule['end_time'])) }}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="duration-badge">
+                                            {{ $schedule['duration'] }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="actions">
+                                            <button type="button" class="btn btn-icon btn-sm btn-danger" onclick="deleteSchedule({{ $schedule['id'] }})" data-bs-toggle="tooltip" title="Delete">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
                                 @empty
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4">
-                                            <div class="empty-state">
-                                                <i class="fas fa-user-md fa-2x mb-3"></i>
-                                                <h5>No Dentists Found</h5>
-                                                <p class="text-muted">Add dentists to manage their working hours</p>
+                                <tr>
+                                    <td colspan="5" class="text-center py-4">
+                                        <div class="empty-state">
+                                            <i class="fas fa-calendar-times fa-2x mb-3"></i>
+                                            <h5>No Schedules Found</h5>
+                                            <p class="text-muted">Add working hours for dentists</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -135,14 +102,10 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Day of Week</label>
-                        <select class="form-select modern-select" name="jour" required>
-                            <option value="monday">Monday</option>
-                            <option value="tuesday">Tuesday</option>
-                            <option value="wednesday">Wednesday</option>
-                            <option value="thursday">Thursday</option>
-                            <option value="friday">Friday</option>
-                            <option value="saturday">Saturday</option>
+                        <label class="form-label">Day of Week</label>                        <select class="form-select modern-select" name="jour" required>
+                            @foreach($days as $value => $label)
+                                <option value="{{ $value }}">{{ $label }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div class="row">
@@ -389,5 +352,16 @@
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
     });
+
+    function deleteSchedule(scheduleId) {
+        if (confirm('Are you sure you want to delete this schedule?')) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/admin/schedule/' + scheduleId;
+            form.innerHTML = '@csrf @method("DELETE")';
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
 </script>
 @endsection

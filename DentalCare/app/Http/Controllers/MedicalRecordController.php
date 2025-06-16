@@ -13,26 +13,33 @@ class MedicalRecordController extends Controller
     {
         $patient = User::findOrFail($request->patient_id);
         return view('modals.create-medical-record', compact('patient'));
-    }
-
-    public function store(Request $request)
+    }    public function store(Request $request)
     {
         $validated = $request->validate([
             'patient_id' => 'required|exists:users,id',
-            'diagnostic' => 'required|string',
-            'traitement' => 'required|string',
-            'prescription' => 'required|string',
+            'diagnostic' => 'required|string|min:3',
+            'traitement' => 'required|string|min:3',
+            'prescription' => 'required|string|min:3',
         ]);
 
-        DossierMedical::create([
-            'patient_id' => $validated['patient_id'],
-            'dentist_id' => Auth::id(),
-            'diagnostic' => $validated['diagnostic'],
-            'traitement' => $validated['traitement'],
-            'prescription' => $validated['prescription'],
-        ]);
+        try {
+            DossierMedical::create([
+                'patient_id' => $validated['patient_id'],
+                'dentist_id' => Auth::id(),
+                'diagnostic' => $validated['diagnostic'],
+                'traitement' => $validated['traitement'],
+                'prescription' => $validated['prescription'],
+            ]);
 
-        return redirect()->route('dashboard')->with('success', 'Medical record created');
+            return response()->json([
+                'success' => true
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false
+            ], 500);
+        }
     }
 
     public function show(DossierMedical $medicalRecord)

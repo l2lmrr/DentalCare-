@@ -127,9 +127,9 @@ Route::middleware('auth')->group(function () {
         Route::post('/dentists/{dentist}/toggle', [App\Http\Controllers\Admin\AdminController::class, 'toggleDentistStatus'])->name('dentists.toggle');
         
         // Working Hours Management
-        Route::get('/schedule', [App\Http\Controllers\Admin\AdminController::class, 'manageSchedule'])->name('schedule');
-        Route::post('/schedule', [App\Http\Controllers\Admin\AdminController::class, 'storeSchedule'])->name('schedule.store');
-        Route::delete('/schedule/{schedule}', [App\Http\Controllers\Admin\AdminController::class, 'deleteSchedule'])->name('schedule.delete');
+        Route::get('/schedule', [App\Http\Controllers\Admin\ScheduleController::class, 'index'])->name('schedule');
+        Route::post('/schedule', [App\Http\Controllers\Admin\ScheduleController::class, 'store'])->name('schedule.store');
+        Route::delete('/schedule/{schedule}', [App\Http\Controllers\Admin\ScheduleController::class, 'destroy'])->name('schedule.delete');
         
         // Appointments Overview
         Route::get('/appointments', [App\Http\Controllers\Admin\AdminController::class, 'appointments'])->name('appointments');

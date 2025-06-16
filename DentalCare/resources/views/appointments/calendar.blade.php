@@ -41,7 +41,7 @@
                                         <p id="selectedTimeDisplay" class="mt-1 text-sm text-blue-600 font-medium"></p>
                                     </div>
                                     
-                                    <button type="submit" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-base font-medium text-white hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
+                                    <button type="submit" onclick="return confirmBooking(event)" class="w-full inline-flex justify-center rounded-lg border border-transparent shadow-sm px-4 py-3 bg-gradient-to-r from-blue-600 to-blue-500 text-base font-medium text-white hover:from-blue-700 hover:to-blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200">
                                         Confirm Appointment
                                     </button>
                                 </div>
@@ -227,6 +227,20 @@
 @push('scripts')
 <script src='https://cdn.jsdelivr.net/combine/npm/@fullcalendar/core@6.1.8/index.global.min.js,npm/@fullcalendar/daygrid@6.1.8/index.global.min.js,npm/@fullcalendar/timegrid@6.1.8/index.global.min.js,npm/@fullcalendar/interaction@6.1.8/index.global.min.js'></script>
 <script>
+function confirmBooking(event) {
+    event.preventDefault();
+    const selectedTime = document.getElementById('selectedTimeDisplay').textContent;
+    const notes = document.getElementById('notes').value;
+    
+    const message = `Are you sure you want to book this appointment?\n\nTime: ${selectedTime}${notes ? '\nNotes: ' + notes : ''}`;
+    
+    if (confirm(message)) {
+        event.target.closest('form').submit();
+        return true;
+    }
+    return false;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const dentistId = {{ $dentist->id }};
     console.log('Dentist ID:', dentistId);

@@ -293,8 +293,7 @@
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                         <button onclick="openPatientRecordsModal({{ $patient->id }})" 
-                                                class="text-indigo-600 hover:text-indigo-900 mr-3">View All</button>
-                                        <button onclick="openNewRecordModal({{ $patient->id }})" 
+                                                class="text-indigo-600 hover:text-indigo-900 mr-3">View All</button>                                        <button onclick="openNewRecordModal({{ $patient->id }}, '{{ $patient->name }}')" 
                                                 class="text-green-600 hover:text-green-900">Add Record</button>
                                     </td>
                                 </tr>
@@ -451,7 +450,7 @@
 </div>
 
 <div id="newRecordModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
-    <!-- Modal content will be loaded via AJAX -->
+    @include('modals.create-medical-record', ['patient' => $patient])
 </div>
 
 <div id="viewPrescriptionModal" class="fixed z-10 inset-0 overflow-y-auto hidden">
@@ -591,13 +590,10 @@
                 console.error('Error:', error);
                 alert('Error loading appointment data');
             });
-    }
-
-    function closeModal() {
-        const modal = document.getElementById('editAppointmentModal');
+    }    function closeModal(modalId = 'editAppointmentModal') {
+        const modal = document.getElementById(modalId);
         if (modal) {
             modal.classList.add('hidden');
-            document.body.classList.remove('overflow-hidden');
         }
     }
 
@@ -645,15 +641,10 @@
                 document.getElementById('patientRecordsModal').innerHTML = html;
                 document.getElementById('patientRecordsModal').classList.remove('hidden');
             });
-    }
-
-    function openNewRecordModal(patientId) {
-        fetch(`/medical-records/create?patient_id=${patientId}`)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('newRecordModal').innerHTML = html;
-                document.getElementById('newRecordModal').classList.remove('hidden');
-            });
+    }    function openNewRecordModal(patientId, patientName) {
+        document.getElementById('selectedPatientName').textContent = patientName;
+        document.getElementById('form_patient_id').value = patientId;
+        document.getElementById('newRecordModal').classList.remove('hidden');
     }
 
     function openViewPrescriptionModal(prescriptionId) {
