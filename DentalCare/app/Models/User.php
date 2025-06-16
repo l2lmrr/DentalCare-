@@ -52,6 +52,9 @@ class User extends Authenticatable
         return in_array($this->role, $roles);
     }
 
+    /**
+     * Get the dentist profile associated with the user.
+     */
     public function dentist()
     {
         return $this->hasOne(Dentist::class);
@@ -72,9 +75,12 @@ class User extends Authenticatable
         return $this->role === 'patient';
     }
 
+    /**
+     * Check if the user is a dentist
+     */
     public function isDentist()
     {
-        return $this->role === 'praticien';
+        return $this->role === 'dentist' || $this->role === 'praticien';
     }
 
     public function getDentistData()
