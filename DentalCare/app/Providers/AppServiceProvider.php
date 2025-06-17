@@ -19,6 +19,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        $router = $this->app['router'];
+        $router->aliasMiddleware('role', \App\Http\Middleware\Role::class);
+        $router->aliasMiddleware('auth.api', \App\Http\Middleware\Authenticate::class . ':sanctum');
     }
 }

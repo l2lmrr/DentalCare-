@@ -28,28 +28,41 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
-    // Patient appointments
-    public function patientAppointments()
+    /**
+     * Get the appointments where this user is the patient
+     */
+    public function appointments()
     {
         return $this->hasMany(RendezVous::class, 'patient_id');
     }
 
-    // Dentist appointments
+    /**
+     * Get the appointments where this user is the dentist
+     */
     public function dentistAppointments()
     {
-        return $this->hasMany(RendezVous::class, 'praticien_id');
+        return $this->hasMany(RendezVous::class, 'dentist_id');
     }
 
-    // Patient medical records
-    public function patientMedicalRecords()
+    public function hasRole($roles)
     {
-        return $this->hasMany(DossierMedical::class, 'patient_id');
+        if (!is_array($roles)) {
+            $roles = [$roles];
+        }
+        return in_array($this->role, $roles);
     }
 
-    // Dentist created medical records
-    public function dentistMedicalRecords()
+    /**
+     * Get the dentist profile associated with the user.
+     */
+    public function dentist()
     {
-        return $this->hasMany(DossierMedical::class, 'praticien_id');
+        return $this->hasOne(Dentist::class);
+    }
+
+    public function workingHours()
+    {
+        return $this->hasMany(PlageHoraire::class, 'dentist_id');
     }
 
     public function isAdmin()
@@ -57,13 +70,78 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
-    public function isPraticien()
-    {
-        return $this->role === 'praticien';
-    }
-
     public function isPatient()
     {
         return $this->role === 'patient';
     }
+
+    /**
+     * Check if the user is a dentist
+     */
+    public function isDentist()
+    {
+        return $this->role === 'dentist' || $this->role === 'praticien';
+    }
+
+    public function getDentistData()
+    {
+        return $this->dentist;
+    }
+
+    public function getPhotoUrlAttribute()
+    {
+        return $this->dentist && $this->dentist->photo 
+            ? asset('storage/'.$this->dentist->photo) 
+            : asset('images/default-profile.jpg');
+    }
+
+    public function getWorkingHoursAttribute()
+    {
+        if (!$this->isDentist()) {
+            return null;
+        }
+
+        return $this->workingHours()->get()->mapWithKeys(function($item) {
+            return [
+                $item->day_name => [
+                    'start' => $item->heure_debut->format('H:i'),
+                    'end' => $item->heure_fin->format('H:i')
+                ]
+            ];
+        });
+    }
+
+    public function isAvailableAt($dateTime)
+    {
+        if (!$this->isDentist()) {
+            return false;
+        }
+
+        $carbonDate = \Carbon\Carbon::parse($dateTime);
+        $dayOfWeek = strtolower($carbonDate->isoFormat('dddd'));
+        $time = $carbonDate->format('H:i:s');
+
+        return $this->workingHours()
+            ->where('jour', $dayOfWeek)
+            ->where('heure_debut', '<=', $time)
+            ->where('heure_fin', '>=', $time)
+            ->exists();
+    }
+
+    public function medicalRecords()
+    {
+        return $this->hasMany(DossierMedical::class, 'patient_id');
+    }
+
+    public function getLastVisitAttribute()
+    {
+        $lastRecord = $this->medicalRecords()->latest()->first();
+        return $lastRecord ? $lastRecord->created_at->format('Y-m-d') : null;
+    }
+
+    public function getRecordsCountAttribute()
+    {
+        return $this->medicalRecords()->count();
+    }
+
 }

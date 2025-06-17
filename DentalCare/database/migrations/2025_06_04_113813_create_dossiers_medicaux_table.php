@@ -8,19 +8,19 @@ return new class extends Migration
 {
     public function up()
     {
-        Schema::create('rendez_vous', function (Blueprint $table) {
+        Schema::create('dossiers_medicaux', function (Blueprint $table) {
             $table->id();
             $table->foreignId('patient_id')->constrained('users')->onDelete('cascade');
-            $table->foreignId('praticien_id')->constrained('users')->onDelete('cascade');
-            $table->dateTime('date_heure');
-            $table->enum('statut', ['confirmé', 'annulé', 'reporté'])->default('confirmé');
-            $table->text('notes')->nullable();
+            $table->foreignId('dentist_id')->constrained('users')->onDelete('cascade');
+            $table->text('diagnostic');
+            $table->text('traitement');
+            $table->text('prescription');
             $table->timestamps();
         });
     }
 
     public function down()
     {
-        Schema::dropIfExists('rendez_vous');
+        Schema::dropIfExists('dossiers_medicaux');
     }
 };

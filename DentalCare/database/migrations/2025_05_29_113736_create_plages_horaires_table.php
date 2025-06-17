@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('plages_horaires', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('praticien_id')->constrained()->onDelete('cascade');
-            $table->enum('jour', ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']);
+            $table->foreignId('dentist_id')->constrained('users')->onDelete('cascade');
+            $table->enum('jour', ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']);
             $table->time('heure_debut');
             $table->time('heure_fin');
             $table->timestamps();
